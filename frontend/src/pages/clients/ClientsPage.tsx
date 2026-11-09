@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import { type ClientFilters, CLIENTS_PAGE_SIZE, useClients } from "@/features/clients/api";
 import { toAppError } from "@/shared/api/errors";
 import { type Client, type ClientSource, type ClientType, SOURCE_LABELS } from "@/shared/api/types";
+import { fmtDate } from "@/features/orders/ui";
+import { formatMoney } from "@/shared/lib/money";
 import { Alert, Badge, Button, Input, LinkButton, Loading, Select, Table, Td, Th } from "@/shared/ui/ui";
 
 export function ClientName({ c }: { c: Client }) {
@@ -80,6 +82,9 @@ export function ClientsPage() {
                   <Th>Авто</Th>
                   <Th>Источник</Th>
                   <Th>Скидка</Th>
+                  <Th>Визитов</Th>
+                  <Th>Сумма</Th>
+                  <Th>Последний визит</Th>
                 </tr>
               </thead>
               <tbody>
@@ -93,6 +98,9 @@ export function ClientsPage() {
                     <Td>{c.vehicles_count}</Td>
                     <Td>{c.source ? SOURCE_LABELS[c.source] : "—"}</Td>
                     <Td>{c.discount_percent}%</Td>
+                    <Td>{c.orders_count ?? "—"}</Td>
+                    <Td>{c.total_spent !== undefined ? formatMoney(c.total_spent) : "—"}</Td>
+                    <Td>{c.last_visit_at ? fmtDate(c.last_visit_at, "Europe/Moscow") : "—"}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -106,6 +114,8 @@ export function ClientsPage() {
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
                   <span>Авто: {c.vehicles_count}</span>
                   {c.discount_percent > 0 && <span>Скидка {c.discount_percent}%</span>}
+                  {c.orders_count !== undefined && <span>Визитов: {c.orders_count}</span>}
+                  {c.total_spent !== undefined && <span>Сумма {formatMoney(c.total_spent)}</span>}
                   {c.archived_at && <Badge tone="warning">В архиве</Badge>}
                 </div>
               </li>

@@ -2,7 +2,9 @@ import { useMutation } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 
 import { useMe } from "@/features/auth/AuthProvider";
+import { SessionsSection } from "@/features/audit/SessionsSection";
 import { useLocations } from "@/features/locations/api";
+import { TelegramSection } from "@/features/telegram/TelegramSection";
 import { api } from "@/shared/api/client";
 import { type AppError, fieldMessage, toAppError } from "@/shared/api/errors";
 import { ROLE_LABELS } from "@/shared/api/types";
@@ -19,6 +21,8 @@ export function SettingsPage() {
       <h1 className="text-xl font-semibold">Настройки</h1>
       <ProfileSection />
       <PasswordSection />
+      <SessionsSection />
+      <TelegramSection />
       <AppearanceSection />
     </div>
   );

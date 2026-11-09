@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useMe } from "@/features/auth/AuthProvider";
+import { useRevokeUserSessions } from "@/features/audit/api";
 import { useLocations } from "@/features/locations/api";
 import { useCreateUser, useResetPassword, useUpdateUser, useUserById } from "@/features/users/api";
 import { type AppError, fieldMessage, toAppError } from "@/shared/api/errors";
@@ -30,6 +31,7 @@ function UserForm({ user }: { user?: User }) {
   const create = useCreateUser();
   const update = useUpdateUser(user?.id ?? "");
   const block = useUpdateUser(user?.id ?? "", false);
+  const revoke = useRevokeUserSessions(user?.id ?? "");
 
   const [login, setLogin] = useState("");
   const [fullName, setFullName] = useState(user?.full_name ?? "");
@@ -80,6 +82,7 @@ function UserForm({ user }: { user?: User }) {
             <div className="mt-1 flex items-center gap-2 text-sm text-muted">
               <span>{user.login}</span>
               <StatusBadge active={user.is_active} />
+              <span>Последний вход: {user.last_login_at ? new Date(user.last_login_at).toLocaleString("ru-RU") : "—"}</span>
             </div>
           )}
         </div>
@@ -111,6 +114,7 @@ function UserForm({ user }: { user?: User }) {
           <h2 id="u-access" className="text-base font-semibold">Доступ</h2>
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={() => setResetOpen(true)}>Сбросить пароль</Button>
+            <Button variant="secondary" loading={revoke.isPending} onClick={() => revoke.mutate(undefined, { onSuccess: () => toast.push("success", "Сессии сотрудника завершены") })}>Завершить все сессии</Button>
             {user.is_active ? (
               <Button variant="danger" disabled={isSelf} onClick={() => setBlockOpen(true)}>Заблокировать</Button>
             ) : (

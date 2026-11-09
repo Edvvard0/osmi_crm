@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { maskPhone } from "@/shared/lib/masks";
 import { APPOINTMENT_STATUS_LABELS, type Appointment, type AppointmentStatus, DEPARTMENT_LABELS } from "@/shared/api/types";
 import { Modal } from "@/shared/ui/modal";
-import { Badge, Button } from "@/shared/ui/ui";
+import { Badge, Button, LinkButton } from "@/shared/ui/ui";
 
 import { NEXT_STATUSES, isEditable, useChangeStatus } from "./api";
 import { STATUS_STYLE, struckClass, vehicleTitle } from "./status";
@@ -82,6 +82,12 @@ export function AppointmentDetails({ appointment: a, tz, postName, onClose, onEd
           <dd>{postName ?? "Без поста"}</dd>
           <dt className="text-muted">Услуги</dt>
           <dd className="min-w-0 break-words">{a.services.length ? a.services.map((x) => x.name).join(", ") : "—"}</dd>
+          {a.work_order_id && (
+            <>
+              <dt className="text-muted">Заказ-наряд</dt>
+              <dd><Link className="font-medium underline" to={`/orders/${encodeURIComponent(a.work_order_id)}`}>Заказ {a.work_order_number ?? ""}</Link></dd>
+            </>
+          )}
           <dt className="text-muted">Комментарий</dt>
           <dd className="min-w-0 whitespace-pre-wrap break-words">{a.comment || "—"}</dd>
         </dl>
@@ -109,6 +115,9 @@ export function AppointmentDetails({ appointment: a, tz, postName, onClose, onEd
                 {ACTION_LABEL[st]}
               </Button>
             ))}
+            {!a.work_order_id && (a.status === "scheduled" || a.status === "confirmed" || a.status === "arrived") && (
+              <LinkButton to={`/orders/new?appointment_id=${encodeURIComponent(a.id)}`}>Создать заказ</LinkButton>
+            )}
             {isEditable(a.status) && <Button type="button" variant="ghost" onClick={onEdit}>Редактировать</Button>}
           </div>
         )}

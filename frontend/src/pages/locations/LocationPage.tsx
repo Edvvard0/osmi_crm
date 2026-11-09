@@ -1,6 +1,8 @@
 import { type FormEvent, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { useMe } from "@/features/auth/AuthProvider";
+import { LocationTelegram } from "@/features/telegram/LocationTelegram";
 import { useCreateLocation, useLocationById, useUpdateLocation } from "@/features/locations/api";
 import { type AppError, fieldMessage, toAppError } from "@/shared/api/errors";
 import type { CrmLocation } from "@/shared/api/types";
@@ -44,6 +46,7 @@ export function LocationPage() {
 
 function LocationForm({ loc }: { loc?: CrmLocation }) {
   const nav = useNavigate();
+  const me = useMe();
   const toast = useToast();
   const create = useCreateLocation();
   const update = useUpdateLocation(loc?.id ?? "");
@@ -119,6 +122,7 @@ function LocationForm({ loc }: { loc?: CrmLocation }) {
         {showAlert && <Alert>{err.message}</Alert>}
         <Button type="submit" loading={m.isPending}>{loc ? "Сохранить" : "Создать"}</Button>
       </form>
+      {loc && <LocationTelegram loc={loc} isDirector={me.role === "director"} />}
       {loc && (
         <section className="border-t border-border pt-4">
           <Button

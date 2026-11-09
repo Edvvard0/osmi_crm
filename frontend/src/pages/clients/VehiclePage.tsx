@@ -4,6 +4,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useArchiveVehicle, useVehicleById } from "@/features/clients/api";
 import { toAppError } from "@/shared/api/errors";
 import type { VehicleDetail } from "@/shared/api/types";
+import { VehicleRecommendations } from "@/features/mechanic/VehicleRecommendations";
+import { EntityOrders } from "@/features/orders/ui";
 import { Alert, Badge, Button, Dialog, LinkButton, Loading } from "@/shared/ui/ui";
 
 import { Field } from "./ClientPage";
@@ -60,6 +62,16 @@ function VehicleCard({ v }: { v: VehicleDetail }) {
       <section aria-labelledby="v-notes" className="space-y-2">
         <h2 id="v-notes" className="text-base font-semibold">Заметки</h2>
         <p className="whitespace-pre-wrap break-words rounded-lg border border-border bg-surface p-4 text-sm">{v.notes || "—"}</p>
+      </section>
+
+      <section aria-labelledby="v-recs" className="space-y-2">
+        <h2 id="v-recs" className="text-base font-semibold">Рекомендации механиков</h2>
+        <VehicleRecommendations vehicleId={v.id} />
+      </section>
+
+      <section aria-labelledby="v-orders" className="space-y-2">
+        <h2 id="v-orders" className="text-base font-semibold">История заказов</h2>
+        <EntityOrders kind="vehicles" id={v.id} />
       </section>
 
       <Dialog open={confirm} title="Архивировать автомобиль?" onClose={() => setConfirm(false)}>

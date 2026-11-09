@@ -14,6 +14,11 @@ export interface User {
   is_active: boolean;
   location_ids: string[];
   created_at: string;
+  /** Модуль 7: привязан ли Telegram; username — только свой/для директора. */
+  /** Модуль 11: последний вход. */
+  last_login_at?: string | null;
+  telegram_linked?: boolean;
+  telegram_username?: string | null;
 }
 
 export interface CrmLocation {
@@ -28,6 +33,9 @@ export interface CrmLocation {
   /** Рабочие часы точки: "HH:MM". */
   work_start: string;
   work_end: string;
+  /** Модуль 7: групповой чат точки (ID — только у директора). */
+  has_telegram_chat?: boolean;
+  telegram_chat_id?: number | null;
 }
 
 export interface Page<T> {
@@ -68,6 +76,11 @@ export interface Client {
   vehicles_count: number;
   created_at: string;
   archived_at: string | null;
+  /** Модуль 5: итоги по закрытым заказам (во всех точках). */
+  orders_count?: number;
+  total_spent?: string;
+  average_check?: string;
+  last_visit_at?: string | null;
 }
 
 export interface Vehicle {
@@ -198,6 +211,7 @@ export interface Appointment {
   client: { id: string; full_name: string; phone: string };
   vehicle: { id: string; make: string; model: string; plate_number: string | null };
   work_order_id: string | null;
+  work_order_number?: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;

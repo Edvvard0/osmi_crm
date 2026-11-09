@@ -1,6 +1,8 @@
 import { useMe } from "@/features/auth/AuthProvider";
 import { useActiveLocation } from "@/features/locations/api";
 import { ROLE_LABELS, type Role } from "@/shared/api/types";
+import { MechanicTasksPage } from "@/features/mechanic/MechanicTasksPage";
+import { ManagerHome } from "@/features/orders/ManagerHome";
 import { Badge } from "@/shared/ui/ui";
 
 const TITLES: Record<Role, string> = {
@@ -13,6 +15,7 @@ const TITLES: Record<Role, string> = {
 export function DashboardPage() {
   const me = useMe();
   const { current, value } = useActiveLocation();
+  if (me.role === "mechanic") return <MechanicTasksPage />;
   return (
     <div>
       <h1 className="text-xl font-semibold">{TITLES[me.role]}</h1>
@@ -25,6 +28,7 @@ export function DashboardPage() {
         <Badge tone="success">Модуль 1</Badge>
         <Badge>Доступ и точки</Badge>
       </div>
+      {(me.role === "manager" || me.role === "director") && <ManagerHome />}
     </div>
   );
 }

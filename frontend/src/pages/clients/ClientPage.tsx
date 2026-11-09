@@ -4,6 +4,8 @@ import { Link, useParams } from "react-router-dom";
 import { useArchiveClient, useClientById } from "@/features/clients/api";
 import { toAppError } from "@/shared/api/errors";
 import { type ClientDetail, SOURCE_LABELS } from "@/shared/api/types";
+import { EntityOrders, fmtDate } from "@/features/orders/ui";
+import { formatMoney } from "@/shared/lib/money";
 import { Alert, Badge, Button, Dialog, LinkButton, Loading } from "@/shared/ui/ui";
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -94,7 +96,15 @@ function ClientCard({ c }: { c: ClientDetail }) {
 
       <section aria-labelledby="c-orders" className="space-y-2">
         <h2 id="c-orders" className="text-base font-semibold">История заказов</h2>
-        <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted">История заказов появится позже</p>
+        {c.orders_count !== undefined && (
+          <dl className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-surface p-4 sm:grid-cols-4">
+            <Field label="Визитов">{String(c.orders_count)}</Field>
+            <Field label="Сумма">{formatMoney(c.total_spent ?? "0.00")}</Field>
+            <Field label="Средний чек">{formatMoney(c.average_check ?? "0.00")}</Field>
+            <Field label="Последний визит">{c.last_visit_at ? fmtDate(c.last_visit_at, "Europe/Moscow") : null}</Field>
+          </dl>
+        )}
+        <EntityOrders kind="clients" id={c.id} />
       </section>
 
       <Dialog open={confirm} title="Архивировать клиента?" onClose={() => setConfirm(false)}>

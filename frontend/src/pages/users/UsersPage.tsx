@@ -75,6 +75,7 @@ export function UsersPage() {
                   <Th>Логин</Th>
                   <Th>Роль</Th>
                   <Th>Точки</Th>
+                  <Th>Telegram подключён</Th>
                   <Th>Статус</Th>
                 </tr>
               </thead>
@@ -87,6 +88,7 @@ export function UsersPage() {
                     <Td>{u.login}</Td>
                     <Td>{ROLE_LABELS[u.role]}</Td>
                     <Td>{names(u)}</Td>
+                    <Td>{u.telegram_linked ? "Да" : "Нет"}</Td>
                     <Td><StatusBadge active={u.is_active} /></Td>
                   </tr>
                 ))}
@@ -100,6 +102,7 @@ export function UsersPage() {
                 <Link to={`/users/${u.id}`} className="font-medium">{u.full_name}</Link>
                 <div className="mt-1 text-sm text-muted">{u.login} · {ROLE_LABELS[u.role]}</div>
                 <div className="mt-1 text-sm text-muted">{names(u)}</div>
+                <div className="mt-1 text-sm text-muted">Telegram: {u.telegram_linked ? "подключён" : "не подключён"}</div>
                 <div className="mt-2"><StatusBadge active={u.is_active} /></div>
               </li>
             ))}

@@ -65,6 +65,8 @@ export interface RequestOptions {
   body?: unknown;
   signal?: AbortSignal;
   skipAuthRetry?: boolean;
+  /** Ответ — бинарное тело (PDF): возвращается Blob, а не JSON. */
+  blob?: boolean;
 }
 
 export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T> {
@@ -103,6 +105,7 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
   }
   if (!res.ok) throw await parseError(res);
   if (res.status === 204) return undefined as T;
+  if (opts.blob) return (await res.blob()) as T;
   try {
     return (await res.json()) as T;
   } catch {
