@@ -6,6 +6,8 @@ import { useActiveLocation } from "@/features/locations/api";
 import { APPOINTMENT_STATUS_LABELS, type Appointment } from "@/shared/api/types";
 import { Badge, Button, LinkButton } from "@/shared/ui/ui";
 
+import { TodaySummary } from "@/features/reports/TodaySummary";
+
 import { useOrderSummary } from "./api";
 import { LoadError, Skeleton } from "./ui";
 
@@ -28,6 +30,7 @@ export function ManagerHome() {
 
   return (
     <section className="mt-6 space-y-5" aria-label="Сегодня">
+      <TodaySummary />
       <div>
         <h2 className="mb-2 text-base font-semibold">Заказ-наряды</h2>
         {summary.isLoading ? (

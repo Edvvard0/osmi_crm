@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMe } from "@/features/auth/AuthProvider";
 import { useRevokeUserSessions } from "@/features/audit/api";
 import { useLocations } from "@/features/locations/api";
+import { UserActivityTab, UserTabs, useUserTab } from "@/features/reports/UserActivityTab";
 import { useCreateUser, useResetPassword, useUpdateUser, useUserById } from "@/features/users/api";
 import { type AppError, fieldMessage, toAppError } from "@/shared/api/errors";
 import { ROLE_LABELS, type Role, type User } from "@/shared/api/types";
@@ -20,7 +21,18 @@ export function UserPage() {
   if (isNew) return <UserForm />;
   if (q.isLoading) return <Loading />;
   if (q.isError || !q.data) return <Alert>{toAppError(q.error).message}</Alert>;
-  return <UserForm user={q.data} />;
+  return <ExistingUser user={q.data} />;
+}
+
+/** Карточка существующего сотрудника: вкладки «Данные» и «Активность» (?tab=activity). */
+function ExistingUser({ user }: { user: User }) {
+  const [tab, setTab] = useUserTab();
+  return (
+    <div className="space-y-4">
+      <UserTabs tab={tab} onChange={setTab} />
+      {tab === "activity" ? <UserActivityTab userId={user.id} fullName={user.full_name} /> : <UserForm user={user} />}
+    </div>
+  );
 }
 
 function UserForm({ user }: { user?: User }) {
