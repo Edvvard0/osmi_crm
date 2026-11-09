@@ -26,11 +26,11 @@ export function useUsers(f: UserFilters) {
   });
 }
 
-export function useUserById(id: string | undefined) {
+export function useUserById(id: string | undefined, enabled = true) {
   return useQuery({
     queryKey: ["users", "one", id],
     queryFn: () => api<User>(`/users/${id}`),
-    enabled: !!id && id !== "new",
+    enabled: enabled && !!id && id !== "new",
   });
 }
 

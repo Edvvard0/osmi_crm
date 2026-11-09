@@ -12,7 +12,7 @@ import { fmtQty, stockErrorText } from "@/features/stock/format";
 import { NotFoundPage } from "@/pages/ErrorPage";
 import { useDebounced } from "@/pages/catalog/common";
 import { toAppError } from "@/shared/api/errors";
-import { DEPARTMENT_LABELS, type Department, type User } from "@/shared/api/types";
+import { DEPARTMENT_LABELS, type Department } from "@/shared/api/types";
 import { maskPhone, normalizePhone } from "@/shared/lib/masks";
 import { formatHours, formatMoney, parseDecimal, toInput } from "@/shared/lib/money";
 import { Modal } from "@/shared/ui/modal";
@@ -26,6 +26,7 @@ import {
   useCatalogServices,
   useDuplicateOrder,
   useLocationTz,
+  type MechanicRef,
   useMechanics,
   useOrder,
   useOrderCall,
@@ -385,7 +386,7 @@ interface TabProps {
   busy: boolean;
 }
 
-function WorksTab({ order, readOnly, isDirector, mechanics, run, busy }: TabProps & { mechanics: User[] | undefined }) {
+function WorksTab({ order, readOnly, isDirector, mechanics, run, busy }: TabProps & { mechanics: MechanicRef[] | undefined }) {
   const [term, setTerm] = useState("");
   const dq = useDebounced(term.trim(), 300);
   const found = useCatalogServices(order.location_id, dq, !readOnly && dq.length >= 2);
@@ -500,7 +501,7 @@ function ItemRow({
   version: number;
   readOnly: boolean;
   isDirector: boolean;
-  mechanics: User[] | undefined;
+  mechanics: MechanicRef[] | undefined;
   run: Run;
   busy: boolean;
 }) {

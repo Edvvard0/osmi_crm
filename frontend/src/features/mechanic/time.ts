@@ -24,7 +24,7 @@ export function formatClock(sec: number): string {
 export function formatNorm(v: string): string {
   const n = Number(v);
   if (!Number.isFinite(n)) return "—";
-  return `${String(Math.round(n * 100) / 100).replace(".", ",")} ч`;
+  return `${String(Math.round(n * 100) / 100).replace(".", ",")}\u00A0ч`;
 }
 
 export function formatDateTime(iso: string | null): string {

@@ -1,0 +1,14 @@
+body {
+  font-family: system-ui, sans-serif;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  margin: 0;
+  background: #111827;
+  color: #fff;
+  text-align: center;
+}
+main { padding: 24px; }
+h1 { font-size: 20px; margin: 0 0 8px; }
+p { color: #d1d5db; margin: 0 0 20px; }
+button { min-height: 44px; padding: 10px 20px; border-radius: 6px; border: 0; font-size: 16px; }

@@ -99,7 +99,7 @@ export function CalendarPage() {
   const today = todayIn(tz, now);
   const date = dateState && isDateStr(dateState) ? dateState : today;
   const effMode: Mode = isMobile ? "day" : mode;
-  const dates = effMode === "week" ? weekDates(date) : [date];
+  const dates = useMemo(() => (effMode === "week" ? weekDates(date) : [date]), [effMode, date]);
   const dateFrom = dates[0];
   const dateTo = dates[dates.length - 1];
 
@@ -160,9 +160,7 @@ export function CalendarPage() {
     }));
     if (appointments.some((a) => a.post_id === null)) cols.push({ key: NONE, label: "Без поста", date, postId: null });
     return cols;
-    // dates зависит только от date и effMode
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effMode, posts, selectedWeekPost, date, appointments]);
+  }, [effMode, posts, selectedWeekPost, date, dates, appointments]);
 
   const colKeyOf = (a: Appointment) => (effMode === "week" ? dateOfMs(Date.parse(a.start_at), tz) : (a.post_id ?? NONE));
 

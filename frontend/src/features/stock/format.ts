@@ -56,7 +56,7 @@ export function sumMoney(values: string[]): string {
 export const qtyEq = (a: string, b: string): boolean => toCents(a) === toCents(b);
 
 /** Значение для поля ввода: "2.500" → "2,5". */
-export const toQtyInput = (v: string): string => fmtQty(v).replace(/ /g, "");
+export const toQtyInput = (v: string): string => fmtQty(v).replace(/\u00A0/g, "");
 
 /**
  * Текст ошибки нехватки остатка из details (нужно / доступно), с названием, если оно известно.

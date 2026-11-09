@@ -18,7 +18,7 @@ export default defineConfig({
     VitePWA({
       // «prompt»: новая версия не подменяет приложение молча — клиент показывает плашку C-05 «Доступна новая версия».
       registerType: "prompt",
-      includeAssets: ["icon.svg", "offline.html", "apple-touch-icon.png"],
+      includeAssets: ["icon.svg", "offline.html", "offline.css", "apple-touch-icon.png"],
       manifest: {
         id: "/",
         name: "CRM Автосервис",

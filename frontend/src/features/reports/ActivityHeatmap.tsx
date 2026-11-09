@@ -247,7 +247,7 @@ export function HeatmapSummary({ data }: { data: ActivityHeatmapData }) {
       </div>
       <div>
         <dt className="text-muted">В среднем за рабочий день</dt>
-        <dd className="font-medium">{hours ? `${avg} ч` : avg}</dd>
+        <dd className="font-medium">{hours ? `${avg}\u00A0ч` : avg}</dd>
       </div>
       <div>
         <dt className="text-muted">Самая длинная серия</dt>

@@ -3,7 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { useLocations } from "@/features/locations/api";
 import { api } from "@/shared/api/client";
 import { type AppError, fieldMessage, messageFor, toAppError } from "@/shared/api/errors";
-import type { Page, Part, Service, User } from "@/shared/api/types";
+import type { Page, Part, Service } from "@/shared/api/types";
 
 import type {
   OrderBoard,
@@ -144,9 +144,12 @@ export function useChangeOrderStatus() {
     meta: { silent: true },
     mutationFn: (v: { id: string; version: number; status: WorkOrderStatus }) =>
       api<WorkOrder>(`/work-orders/${enc(v.id)}/status`, { body: { version: v.version, status: v.status } }),
-    onSettled: () => {
+    onSettled: (_o, _e, v) => {
       void qc.invalidateQueries({ queryKey: ["orders"] });
       void qc.invalidateQueries({ queryKey: ["order"] });
+      // Как у useOrderCall: смена статуса пишет историю и может менять связанную запись.
+      void qc.invalidateQueries({ queryKey: ["order-history", v.id] });
+      void qc.invalidateQueries({ queryKey: ["appointments"] });
     },
   });
 }
@@ -190,15 +193,23 @@ export function useCatalogParts(search: string, enabled = true) {
   return useQuery({ queryKey: ["orders", "catalog-parts", q], queryFn: () => api<Page<Part>>(`/parts${q}`), enabled });
 }
 
-/** Механики точки. Список сотрудников по контракту доступен руководителю; у менеджера (403) выбор механика скрывается. */
+/** Механик — исполнитель работы (id и ФИО). */
+export interface MechanicRef {
+  id: string;
+  full_name: string;
+}
+
+/**
+ * Активные механики точки: GET /work-orders/mechanics (доступно менеджеру и руководителю).
+ * /users закрыт для менеджера (403) — через него менеджер не мог назначить механика.
+ */
 export function useMechanics(locationId: string) {
-  const q = qs({ role: "mechanic", is_active: true, location_id: locationId, limit: 200 });
+  const q = qs({ location_id: locationId });
   return useQuery({
     queryKey: ["orders", "mechanics", q],
-    queryFn: () => api<Page<User>>(`/users${q}`),
+    queryFn: () => api<MechanicRef[]>(`/work-orders/mechanics${q}`),
     enabled: !!locationId,
     retry: false,
-    select: (p) => p.items,
   });
 }
 

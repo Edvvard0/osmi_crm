@@ -143,7 +143,10 @@ function Attention({ a }: { a: Dashboard["attention"] }) {
             <ul className="mt-1 space-y-1 text-sm">
               {a.low_stock.items.map((s) => (
                 <li key={`${s.location.id}-${s.part.id}`} className="flex flex-wrap justify-between gap-2">
-                  <span className="min-w-0 break-words">{s.part.name} <span className="text-muted">({s.part.sku})</span></span>
+                  <span className="min-w-0 break-words">
+                    <Link to={`/stock/${enc(s.part.id)}?location_id=${enc(s.location.id)}`} className="underline underline-offset-2">{s.part.name}</Link>{" "}
+                    <span className="text-muted">({s.part.sku})</span>
+                  </span>
                   <span className="text-muted">{s.location.name} · {formatQty(s.quantity)} из {formatQty(s.min_quantity)}</span>
                 </li>
               ))}

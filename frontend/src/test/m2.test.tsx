@@ -255,6 +255,7 @@ describe("карточка клиента и автомобили", () => {
       ...base(manager()),
       "POST /clients": () => json(201, client()),
       "GET /clients/c1": () => json(200, detail(client({ vehicles_count: cars.length }), cars)),
+      "GET /clients/c1/work-orders": () => json(200, { items: [], total: 0 }),
       "POST /clients/c1/vehicles": (r) => {
         const b = r.body as Partial<Vehicle>;
         const v = vehicle({ id: `v${cars.length + 1}`, make: b.make!, model: b.model!, vin: b.vin ?? null, plate_number: b.plate_number ?? null });
@@ -268,7 +269,7 @@ describe("карточка клиента и автомобили", () => {
     await u.type(screen.getByLabelText("Телефон"), "89991234567");
     await u.click(screen.getByRole("button", { name: "Создать" }));
     await waitFor(() => expect(window.location.pathname).toBe("/clients/c1"));
-    expect(await screen.findByText("История заказов появится позже")).toBeInTheDocument();
+    expect(await screen.findByText("Заказов пока нет")).toBeInTheDocument();
     expect(screen.getByText("Автомобилей пока нет")).toBeInTheDocument();
 
     for (const [make, model, plate, vin] of [

@@ -137,7 +137,8 @@ describe("маршруты и офлайн", () => {
     act(() => {
       window.dispatchEvent(new Event("offline"));
     });
-    expect(screen.getByRole("alert")).toHaveTextContent(/^Нет соединения/);
+    // Блоки главной без моков тоже показывают role=alert — проверяем именно баннер.
+    expect(screen.getByText(/^Нет соединения/)).toHaveAttribute("role", "alert");
     act(() => {
       window.dispatchEvent(new Event("online"));
     });

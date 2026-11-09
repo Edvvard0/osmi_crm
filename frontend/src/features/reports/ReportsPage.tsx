@@ -5,7 +5,6 @@ import { Link, useSearchParams } from "react-router-dom";
 import { isDateStr } from "@/features/appointments/time";
 import { useActiveLocation } from "@/features/locations/api";
 import { Skeleton } from "@/features/orders/ui";
-import { toAppError } from "@/shared/api/errors";
 import { formatHours, formatMoney } from "@/shared/lib/money";
 import { Button, Select } from "@/shared/ui/ui";
 
@@ -24,6 +23,7 @@ import {
   lastOfMonth,
   monthOf,
   num,
+  reportErrorText,
 } from "./lib";
 import type { Report, ReportColumnKind, ReportId } from "./types";
 
@@ -174,7 +174,7 @@ export function ReportsPage() {
     try {
       await downloadFile(reportExportPath(params, format), `report-${id}-${dateFrom}_${dateTo}.${format}`);
     } catch (e) {
-      setExportError(toAppError(e).message);
+      setExportError(reportErrorText(e));
     } finally {
       setExporting(null);
     }

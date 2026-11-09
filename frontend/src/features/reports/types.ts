@@ -198,7 +198,7 @@ export interface MyEarnings {
       name: string;
       norm_hours_total: string;
       actual_minutes: number;
-      finished_at: string;
+      finished_at: string | null;
     }[];
   }[];
   server_time: string;

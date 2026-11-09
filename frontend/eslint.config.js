@@ -11,6 +11,8 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       "no-console": "error",
+      // { a: _a, ...rest } — штатный способ выбросить поле из объекта.
+      "@typescript-eslint/no-unused-vars": ["error", { ignoreRestSiblings: true }],
       "no-eval": "error",
       "no-implied-eval": "error",
       "no-restricted-syntax": [

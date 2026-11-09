@@ -458,7 +458,7 @@ describe("D-01 дашборд директора", () => {
     expect(points.getByText("Москва-1")).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Топ услуг" })).getByText("Замена масла")).toBeInTheDocument();
     const attention = within(screen.getByRole("region", { name: "Внимание" }));
-    expect(attention.getByText("MSK1-000009")).toBeInTheDocument();
+    expect(attention.getByRole("link", { name: "Заказ MSK1-000009" })).toHaveAttribute("href", "/orders/o9");
     expect(attention.getByRole("link", { name: /Фильтр масляный/ })).toBeInTheDocument();
   });
 
@@ -674,8 +674,10 @@ describe("M-07 заработок механика", () => {
     expect(total.getByText(/43\s500,00/)).toBeInTheDocument();
     expect(norm(screen.getByText(/Ожидают закрытия заказа/).textContent)).toContain("Ожидают закрытия заказа: 2 работы");
     expect(screen.getByText("Премия за качество")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Заказ MSK1-000001" })).toHaveAttribute("href", "/orders/o1");
-    expect(screen.getByText("Замена масла")).toBeInTheDocument();
+    // Тот же заказ может быть и в панели «Мои рабочие дни» — проверяем блок выполненных работ.
+    const works = within(screen.getByRole("region", { name: "Выполненные работы" }));
+    expect(works.getByRole("link", { name: "Заказ MSK1-000001" })).toHaveAttribute("href", "/orders/o1");
+    expect(works.getByText("Замена масла")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Следующий месяц" })).toBeDisabled();
 
     const first = new URL(String(calls(f, "GET /me/earnings")[0][0]), "http://x").searchParams.get("month")!;
@@ -736,24 +738,32 @@ describe("MG-16 отчёт точки", () => {
 describe("MG-17 рабочие дни сотрудника", () => {
   const mechanic = makeUser("mechanic", { id: "m1", full_name: "Пётр Механик", telegram_linked: true });
 
-  it("менеджер видит имя, точки, Telegram и карту; зарплаты и учётных данных нет", async () => {
-    world("manager", { "GET /users/m1": () => json(200, mechanic) });
+  it("менеджер видит имя (из карты) и карту без запроса /users/{id}; зарплаты и учётных данных нет", async () => {
+    // GET /users/{id} — только руководитель: менеджеру бэкенд отвечает 403.
+    const f = world("manager", { "GET /users/m1": () => apiError(403, "forbidden") });
+    open(<MechanicActivityPage />, "/mechanics/m1", "/mechanics/:id");
+    expect(await screen.findByRole("heading", { name: "Пётр Механик" })).toBeInTheDocument();
+    await waitFor(() => expect(cell("2026-11-04")).toBeTruthy());
+    expect(calls(f, "GET /users/m1")).toHaveLength(0);
+    expect(norm(document.body.textContent)).not.toMatch(/Оклад|Зарплата|Логин|Пароль|Ставка/);
+  });
+
+  it("руководитель дополнительно видит точки и Telegram", async () => {
+    world("director", { "GET /users/m1": () => json(200, mechanic) });
     open(<MechanicActivityPage />, "/mechanics/m1", "/mechanics/:id");
     expect(await screen.findByRole("heading", { name: "Пётр Механик" })).toBeInTheDocument();
     expect(await screen.findByText("Telegram подключён")).toBeInTheDocument();
     expect(screen.getByText("Москва-1")).toBeInTheDocument();
-    await waitFor(() => expect(cell("2026-11-04")).toBeTruthy());
-    expect(norm(document.body.textContent)).not.toMatch(/Оклад|Зарплата|Логин|Пароль|Ставка/);
   });
 
-  it("чужой сотрудник (404 по карточке или по карте) — экран «не найден»", async () => {
-    world("manager", { "GET /users/m1": () => apiError(404, "not_found") });
+  it("чужой сотрудник (404 по карте или по карточке у руководителя) — экран «не найден»", async () => {
+    world("manager", { "GET /users/m1/activity-heatmap": () => apiError(404, "not_found") });
     const r1 = open(<MechanicActivityPage />, "/mechanics/m1", "/mechanics/:id");
     expect(await screen.findByRole("heading", { name: "Сотрудник не найден" })).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Карта активности по дням" })).toBeNull();
     r1.unmount();
 
-    world("manager", { "GET /users/m1": () => json(200, mechanic), "GET /users/m1/activity-heatmap": () => apiError(404, "not_found") });
+    world("director", { "GET /users/m1": () => apiError(404, "not_found") });
     open(<MechanicActivityPage />, "/mechanics/m1", "/mechanics/:id");
     expect(await screen.findByRole("heading", { name: "Сотрудник не найден" })).toBeInTheDocument();
   });

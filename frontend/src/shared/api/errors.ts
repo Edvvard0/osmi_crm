@@ -14,7 +14,7 @@ const BASE_ERROR_MESSAGES: Record<string, string> = {
   unsupported_media_type: "Неподдерживаемый формат",
   validation_error: "Проверьте введённые данные",
   rate_limited: "Слишком много попыток. Повторите позже",
-  internal_error: "Что-то пошло не так. Мы уже знаем о проблеме",
+  internal_error: "Внутренняя ошибка сервера",
   network_error: "Нет соединения с сервером",
   offline: "Нет соединения — действие недоступно",
   service_unavailable: "Сервис временно недоступен. Попробуйте позже",

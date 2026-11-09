@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 
 import { useActiveLocation } from "@/features/locations/api";
 import { Skeleton } from "@/features/orders/ui";
-import { toAppError } from "@/shared/api/errors";
 import { DEPARTMENT_LABELS } from "@/shared/api/types";
 import { formatHours, formatMoney } from "@/shared/lib/money";
 import { Badge, Button } from "@/shared/ui/ui";
@@ -22,6 +21,7 @@ import {
   formatSigned,
   isMonth,
   plural,
+  reportErrorText,
   shiftMonth,
   sign,
   useToday,
@@ -172,7 +172,7 @@ export function PayrollPage() {
     try {
       await downloadFile(payrollExportPath({ month: m, locationId }, format), `payroll-${m}.${format}`);
     } catch (e) {
-      setExportError(toAppError(e).message);
+      setExportError(reportErrorText(e));
     } finally {
       setExporting(null);
     }

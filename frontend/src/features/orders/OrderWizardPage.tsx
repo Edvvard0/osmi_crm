@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { ClientVehiclePicker, type PickedClient } from "@/features/appointments/ClientVehiclePicker";
@@ -61,28 +61,24 @@ export function OrderWizardPage() {
   const [fieldErr, setFieldErr] = useState<Record<string, string>>({});
   const create = useCreateOrder();
 
-  // Подстановка из записи: клиент, авто и услуги.
-  const filledApt = useRef(false);
-  useEffect(() => {
+  // Подстановка из записи (клиент, авто, услуги) и из ?client_id=&vehicle_id=.
+  // Состояние выставляется во время рендера (а не в useEffect), чтобы форма не показывалась
+  // ни на один кадр с клиентом из записи, но без её услуг (кнопка «Создать заказ» уже активна).
+  const [prefilled, setPrefilled] = useState(false);
+  if (!prefilled && apt.data) {
     const a = apt.data;
-    if (!a || filledApt.current) return;
-    filledApt.current = true;
+    setPrefilled(true);
     setClient({ id: a.client.id, full_name: a.client.full_name, phone: a.client.phone });
     setVehicleId(a.vehicle_id);
     setDrafts(
       a.services.map((s) => ({ key: nextKey(), service_id: s.id, name: s.name, price: "", quantity: "1.00", department: a.department, mechanic_id: "" })),
     );
-  }, [apt.data]);
-
-  // Подстановка из ?client_id=&vehicle_id=.
-  const filledQuery = useRef(false);
-  useEffect(() => {
+  } else if (!prefilled && preClient.data) {
     const c = preClient.data;
-    if (!c || filledQuery.current) return;
-    filledQuery.current = true;
+    setPrefilled(true);
     setClient({ id: c.id, full_name: c.full_name, phone: c.phone });
     if (qVehicle) setVehicleId(qVehicle);
-  }, [preClient.data, qVehicle]);
+  }
 
   const locked = !!appointmentId;
 
