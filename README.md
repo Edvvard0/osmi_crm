@@ -1,8 +1,16 @@
 # CRM для автосервиса и детейлинга
 
-PWA: FastAPI + PostgreSQL (async) + React. Документы: [docs/](docs/).
+PWA для сети автосервисов: записи, заказ-наряды, склад, касса, отчёты, зарплата, уведомления в Telegram.
+Роли: механик, менеджер, руководитель. Стек: FastAPI + PostgreSQL (async) + React.
 
-## Запуск (Docker)
+## Документация
+
+- [Руководство пользователя](docs/user-guide.md)
+- [Архитектура и локальная разработка](docs/architecture.md)
+- [Развёртывание и эксплуатация](docs/deployment.md)
+- План, схема БД, экраны, контракты API — в [docs/](docs/)
+
+## Запуск для разработки (Docker)
 
 ```bash
 docker compose up -d --build     # или: make up
@@ -19,23 +27,24 @@ docker compose up -d --build     # или: make up
 | `make lint` | ruff + mypy |
 
 На Windows без `make` выполняйте команды из Makefile напрямую (`docker compose ...`).
+Запуск без Docker — см. [docs/architecture.md](docs/architecture.md#локальная-разработка).
 
-## Локальный запуск без Docker (запасной вариант)
-
-Нужны Python 3.12+, Node 20+, PostgreSQL 16.
+## Прод
 
 ```bash
-cd backend && python -m venv .venv && .venv/Scripts/pip install -e ".[dev]"   # Linux/macOS: .venv/bin/pip
-.venv/Scripts/alembic upgrade head && .venv/Scripts/uvicorn app.main:app --reload
-cd frontend && npm install && npm run dev
+cp .env.prod.example .env.prod   # заполнить секреты
+make prod-up                     # БД, миграции, API, воркер, фронтенд, nginx, бэкапы
+make prod-seed                   # первый руководитель
 ```
 
-Тесты без БД: `cd backend && .venv/Scripts/python -m pytest -m "not integration"`; фронтенд: `npm test`.
-`.venv/`, `node_modules/`, `dist/`, `.env` не коммитятся (см. `.gitignore`).
+Подробно (TLS, бэкапы, обновление, мониторинг) — [docs/deployment.md](docs/deployment.md).
 
-## Безопасность (модуль 0)
-- Все входные схемы Pydantic с `extra="forbid"`; типы `Phone`, `PlateNumber`, `VIN`, `Login`, `SafeText`, `Money`.
-- Единый формат ошибок; 500 без деталей; 422 без введённых значений; ошибки БД → доменные коды.
-- В проде `/api/docs`, `/api/redoc`, `/openapi.json` отключены; нет заголовков `Server`/`X-Powered-By`.
-- Nginx: CSP, HSTS, `X-Content-Type-Options`, `X-Frame-Options`, лимит запросов и размера тела.
-- Фронтенд: словарь сообщений, Error Boundary, `window.onerror`/`unhandledrejection`, сборка без source maps и `console.*`.
+## Безопасность
+
+- Все входные схемы Pydantic с `extra="forbid"` и типами `SafeText`, `Phone`, `PlateNumber`, `VIN`, `Login`, `Money`; HTML вычищается; SQL только через ORM и параметры.
+- Единый формат ошибок; 500 без деталей; 422 без введённых значений.
+- argon2id, блокировка после неудачных входов, rate limit; access-токен в памяти, refresh — httpOnly cookie с ротацией.
+- CSP, HSTS и прочие заголовки; в проде `/api/docs` и OpenAPI отключены.
+- Фронтенд: словарь сообщений об ошибках, Error Boundary, сборка без source maps.
+
+`.venv/`, `node_modules/`, `dist/`, `.env*` не коммитятся (см. `.gitignore`).
