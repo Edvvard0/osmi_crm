@@ -85,7 +85,9 @@ class VehicleRecommendation(Base):
     work_order_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("work_orders.id"))
     text: Mapped[str] = mapped_column(String(1000))
     priority: Mapped[str] = mapped_column(String(10))
-    status: Mapped[str] = mapped_column(String(10), server_default=sql_text("'open'"), default="open")
+    status: Mapped[str] = mapped_column(
+        String(10), server_default=sql_text("'open'"), default="open"
+    )
     created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

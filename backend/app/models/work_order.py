@@ -70,6 +70,13 @@ class WorkOrder(Base):
             "planned_ready_at",
             postgresql_where=text("status NOT IN ('closed','cancelled')"),
         ),
+        # Отчёты (миграция 0010).
+        Index(
+            "ix_work_orders_closed_location",
+            "location_id",
+            "closed_at",
+            postgresql_where=text("status = 'closed'"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_id)
@@ -124,6 +131,13 @@ class WorkOrderItem(Base):
         Index("ix_work_order_items_order", "work_order_id"),
         Index("ix_work_order_items_mechanic_status", "mechanic_id", "status"),
         Index("ix_work_order_items_mechanic_finished", "mechanic_id", "finished_at"),
+        # Отчёты (миграция 0010).
+        Index(
+            "ix_work_order_items_mechanic_done",
+            "mechanic_id",
+            "finished_at",
+            postgresql_where=text("status = 'done'"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_id)
@@ -173,8 +187,9 @@ class WorkOrderPart(Base):
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2))
-    # FK на stock_movements добавит миграция модуля 8.
-    stock_movement_id: Mapped[uuid.UUID | None] = mapped_column(unique=True)
+    stock_movement_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("stock_movements.id", name="fk_work_order_parts_stock_movement"), unique=True
+    )
     added_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

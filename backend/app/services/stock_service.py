@@ -234,7 +234,8 @@ async def return_for_order(
         location_id=original.location_id,
         part_id=original.part_id,
         movement_type="return_from_order",
-        quantity=Decimal(part_row.quantity),
+        # Ровно столько, сколько было выдано этим движением (не зависит от текущей строки заказа).
+        quantity=-original.quantity,
         unit_cost=original.unit_cost,
         work_order_id=order.id,
         related_movement_id=original.id,

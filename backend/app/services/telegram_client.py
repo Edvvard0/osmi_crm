@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import logging
+import re
 from typing import Any, Literal
 
 import httpx
@@ -13,6 +15,23 @@ import structlog
 from app.core.config import get_settings
 
 log = structlog.get_logger()
+
+_TOKEN_IN_URL = re.compile(r"/bot[^/\s\"']+")
+
+
+class _RedactBotToken(logging.Filter):
+    """httpx пишет в лог INFO «HTTP Request: POST <url>», а URL Bot API содержит токен."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        if "/bot" in message:
+            record.msg, record.args = _TOKEN_IN_URL.sub("/bot***", message), None
+        return True
+
+
+_httpx_log = logging.getLogger("httpx")
+if not any(isinstance(f, _RedactBotToken) for f in _httpx_log.filters):
+    _httpx_log.addFilter(_RedactBotToken())
 
 ErrorKind = Literal["blocked", "rate_limit", "temporary", "permanent"]
 
@@ -60,7 +79,11 @@ class TelegramClient:
         self._http = httpx.AsyncClient(transport=transport, timeout=timeout)
 
     async def call(
-        self, method: str, payload: dict[str, Any], *, timeout: float | None = None
+        self,
+        method: str,
+        payload: dict[str, Any],
+        *,
+        timeout: float | None = None,  # noqa: ASYNC109 - таймаут запроса httpx, не asyncio
     ) -> Any:
         url = f"{self._base}/bot{self._token}/{method}"
         try:
@@ -82,7 +105,7 @@ class TelegramClient:
         text: str,
         *,
         parse_mode: str | None = "HTML",
-        timeout: float | None = None,
+        timeout: float | None = None,  # noqa: ASYNC109 - таймаут запроса httpx, не asyncio
     ) -> None:
         payload: dict[str, Any] = {"chat_id": chat_id, "text": text}
         if parse_mode:

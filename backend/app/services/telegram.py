@@ -3,6 +3,7 @@
 import secrets
 import uuid
 from datetime import timedelta
+from html import escape
 
 import structlog
 from sqlalchemy import select, update
@@ -17,11 +18,11 @@ from app.models import Location, User
 from app.models.telegram import NotificationOutbox, NotificationSetting, TelegramLinkCode
 from app.schemas.telegram import (
     LinkCode,
-    NotificationSetting as NotificationSettingRead,
-)
-from app.schemas.telegram import (
     NotificationSettingsPatch,
     TelegramStatus,
+)
+from app.schemas.telegram import (
+    NotificationSetting as NotificationSettingRead,
 )
 from app.services import telegram_client
 from app.services.audit import ClientInfo, write_audit
@@ -69,6 +70,11 @@ async def create_link_code(session: AsyncSession, user: User) -> LinkCode:
         raise AppError(409, "already_linked")
     if not link_code_limiter.allow(str(user.id), 5):
         raise AppError(429, "rate_limited")
+    # Блокировка строки пользователя: параллельные запросы не оставят двух действующих кодов,
+    # а привязка, завершившаяся между запросами, будет видна.
+    await session.refresh(user, with_for_update=True)
+    if user.telegram_chat_id is not None:
+        raise AppError(409, "already_linked")
     now = utcnow()
     # Предыдущие неиспользованные коды аннулируются.
     await session.execute(
@@ -184,8 +190,6 @@ async def test_location_chat(
     if client is None:  # pragma: no cover - проверено выше
         raise AppError(409, "telegram_disabled")
     try:
-        from html import escape
-
         await client.send_message(
             loc.telegram_chat_id,
             f"Проверка связи: точка {escape(loc.name, quote=False)}",

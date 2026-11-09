@@ -74,7 +74,9 @@ class StockMovement(Base):
             "uq_stock_movements_single_reversal",
             "related_movement_id",
             unique=True,
-            postgresql_where=text("movement_type = 'adjustment' AND related_movement_id IS NOT NULL"),
+            postgresql_where=text(
+                "movement_type = 'adjustment' AND related_movement_id IS NOT NULL"
+            ),
         ),
         Index(
             "uq_stock_movements_single_return",
@@ -91,8 +93,7 @@ class StockMovement(Base):
     quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3))
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     balance_after: Mapped[Decimal] = mapped_column(Numeric(12, 3))
-    # FK на work_orders добавляет миграция 0008 (таблица создаётся модулем 5).
-    work_order_id: Mapped[uuid.UUID | None] = mapped_column()
+    work_order_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("work_orders.id"))
     related_movement_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("stock_movements.id"))
     supplier: Mapped[str | None] = mapped_column(String(200))
     document_number: Mapped[str | None] = mapped_column(String(50))

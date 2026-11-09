@@ -163,10 +163,6 @@ class StartBody(Strict):
     pause_active: bool = False
 
 
-class EmptyBody(Strict):
-    pass
-
-
 class FinishBody(BlankToNone, Strict):
     blank_fields = frozenset({"comment"})
 

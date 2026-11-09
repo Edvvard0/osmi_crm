@@ -28,7 +28,7 @@ from app.services.cash_orders import order_read
 router = APIRouter(tags=["cash"])
 
 Limit = Annotated[int, Query(ge=1, le=200)]
-Offset = Annotated[int, Query(ge=0)]
+Offset = Annotated[int, Query(ge=0, le=1_000_000)]
 
 
 # ---------------- оплаты и возвраты ----------------
@@ -67,7 +67,7 @@ async def refund_payment(
     allowed: AllowedLocations,
     client: Client,
 ) -> PaymentResult:
-    payment, created = await svc.refund_payment(session, actor, payment_id, data, client)
+    payment, created = await svc.refund_payment(session, actor, allowed, payment_id, data, client)
     if not created:
         response.status_code = 200
     return PaymentResult(

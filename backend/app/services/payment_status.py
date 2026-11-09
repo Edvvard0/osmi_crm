@@ -1,7 +1,7 @@
 """Статус оплаты заказа: пересчитывается при платеже/возврате и при изменении `total` заказа."""
 
 import uuid
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from sqlalchemy import case, func, select
@@ -14,7 +14,7 @@ _ZERO = Decimal("0.00")
 
 
 def _q(value: Decimal) -> Decimal:
-    return value.quantize(Decimal("0.01"))
+    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 async def payment_sums(

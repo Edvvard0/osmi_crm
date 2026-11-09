@@ -255,8 +255,8 @@ class WorkOrderListItem(Strict):
 
 
 class WorkOrderRead(WorkOrderListItem):
-    client: ClientFull  # type: ignore[assignment]
-    vehicle: VehicleFull  # type: ignore[assignment]
+    client: ClientFull
+    vehicle: VehicleFull
     complaint: str | None
     intake_notes: str | None
     diagnosis: str | None

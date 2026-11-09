@@ -10,13 +10,12 @@ import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.mechanic import WorkLog
-from app.models.work_order import WorkOrderItem
+from app.models.work_order import WorkOrder, WorkOrderItem
 
 _MICRO = timedelta(microseconds=1)
 
@@ -77,7 +76,7 @@ async def _close_logs(session: AsyncSession, item_ids: Iterable[uuid.UUID]) -> s
     return {log.item_id for log in logs}
 
 
-async def pause_all(session: AsyncSession, order: Any) -> None:
+async def pause_all(session: AsyncSession, order: WorkOrder) -> None:
     """Закрывает открытые интервалы работ заказа; позиции `in_progress` -> `paused`."""
     items = (
         await session.scalars(
@@ -93,14 +92,14 @@ async def pause_all(session: AsyncSession, order: Any) -> None:
     await session.flush()
 
 
-async def close_open_log(session: AsyncSession, item: Any) -> None:
+async def close_open_log(session: AsyncSession, item: WorkOrderItem) -> None:
     """Закрывает открытый интервал таймера позиции и пересчитывает `actual_minutes`."""
     closed = await _close_logs(session, [item.id])
     if closed:
         await recalc_actual_minutes(session, item)
 
 
-async def has_open_log(session: AsyncSession, item: Any) -> bool:
+async def has_open_log(session: AsyncSession, item: WorkOrderItem) -> bool:
     """Есть ли у позиции открытый интервал таймера."""
     return await open_log(session, item.id) is not None
 
@@ -112,16 +111,12 @@ async def worked_seconds(
     ids = list(item_ids)
     if not ids:
         return {}
+    duration = func.coalesce(WorkLog.ended_at, at) - WorkLog.started_at
     rows = (
         await session.execute(
             select(
                 WorkLog.item_id,
-                func.coalesce(
-                    func.sum(
-                        func.extract("epoch", func.coalesce(WorkLog.ended_at, at) - WorkLog.started_at)
-                    ),
-                    0,
-                ),
+                func.coalesce(func.sum(func.extract("epoch", duration)), 0),
                 func.max(WorkLog.started_at).filter(WorkLog.ended_at.is_(None)),
             )
             .where(WorkLog.item_id.in_(ids))

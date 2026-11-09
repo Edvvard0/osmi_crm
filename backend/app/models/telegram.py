@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    CHAR,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -30,7 +31,7 @@ class TelegramLinkCode(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_id)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
-    code_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    code_hash: Mapped[str] = mapped_column(CHAR(64), unique=True)  # sha256 hex
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

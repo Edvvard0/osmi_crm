@@ -447,6 +447,10 @@ async def test_cash_report_and_operations(api, db) -> None:
     assert r.status_code == 422 and "date_to" in r.json()["error"]["fields"]
     r = await api.get(f"{API}/cash/report?location_id={s.a.id}&date_from=2026-01-01&date_to=2026-06-01", headers=token(s.director))
     assert r.status_code == 422
+    # огромный offset — 422, а не переполнение bigint в БД (500)
+    for path in ("cash/operations", "expenses"):
+        r = await api.get(f"{API}/{path}?location_id={s.a.id}&offset={10**30}", headers=token(s.director))
+        assert r.status_code == 422 and "offset" in r.json()["error"]["fields"], path
 
 
 async def test_close_and_cancel_rules(api, db) -> None:

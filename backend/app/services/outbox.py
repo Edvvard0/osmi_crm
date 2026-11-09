@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 
 import structlog
-from sqlalchemy import bindparam, delete, select, text, update
+from sqlalchemy import bindparam, delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.types import BigInteger
@@ -68,7 +68,7 @@ _default_throttle = Throttle()
 
 
 def backoff_seconds(attempts: int) -> int:
-    return BACKOFF_BASE * 2 ** (attempts - 1)
+    return BACKOFF_BASE * (1 << max(attempts - 1, 0))
 
 
 _PICK = text(
@@ -154,12 +154,18 @@ async def dispatch_once(
     await session.commit()  # завершаем читающую транзакцию, дальше — по строке
     done = 0
     for row_id in ids:
+        # Условия выборки повторяются под блокировкой: между _PICK и FOR UPDATE строку мог
+        # обработать другой воркер (отправить или отложить ретраем) — второй отправки не будет.
         row = await session.scalar(
             select(NotificationOutbox)
-            .where(NotificationOutbox.id == row_id, NotificationOutbox.status == "pending")
+            .where(
+                NotificationOutbox.id == row_id,
+                NotificationOutbox.status == "pending",
+                NotificationOutbox.next_attempt_at <= func.now(),
+            )
             .with_for_update(skip_locked=True)
         )
-        if row is None:  # уже обработана (отвязка, другой воркер)
+        if row is None:  # уже обработана или отложена (отвязка, другой воркер)
             await session.commit()
             continue
         await throttle.wait_global()

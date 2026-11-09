@@ -260,12 +260,14 @@ async def test_create_contract_shape_and_audit(api, db, ctx):
     )
     assert r.status_code == 201, r.text
     a = r.json()
+    # work_order_number — расширение модуля 5 (api-contract-m5.md)
     assert set(a) == {
         "id", "location_id", "client_id", "vehicle_id", "post_id", "department", "start_at",
         "end_at", "status", "comment", "service_ids", "services", "client", "vehicle",
-        "work_order_id", "created_by", "created_at", "updated_at",
+        "work_order_id", "work_order_number", "created_by", "created_at", "updated_at",
     }  # fmt: skip
     assert a["status"] == "scheduled" and a["work_order_id"] is None
+    assert a["work_order_number"] is None
     assert (
         a["start_at"] == "2026-11-10T10:00:00+03:00" and a["end_at"] == "2026-11-10T11:00:00+03:00"
     )
@@ -1146,6 +1148,8 @@ async def test_location_read_has_new_fields_for_all_roles(api, ctx):
         loc = r.json()
         assert set(loc) == {
             "id", "name", "address", "phone", "is_active", "code", "timezone", "work_start", "work_end",
+            # поля чата точки (расширение модуля 7)
+            "has_telegram_chat", "telegram_chat_id",
         }  # fmt: skip
         assert loc["timezone"] == "Europe/Moscow"
         assert loc["work_start"] == "09:00" and loc["work_end"] == "21:00"

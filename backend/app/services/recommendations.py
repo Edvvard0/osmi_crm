@@ -30,12 +30,23 @@ def _read(
         work_order_id=rec.work_order_id,
         work_order_number=order_number,
         text=rec.text,
-        priority=rec.priority,  # type: ignore[arg-type]
-        status=rec.status,  # type: ignore[arg-type]
+        priority=rec.priority,
+        status=rec.status,
         created_by=UserRef(id=author.id, full_name=author.full_name),
         created_at=rec.created_at,
         updated_at=rec.updated_at,
     )
+
+
+def _created(rec: Recommendation) -> dict[str, dict[str, str | None]]:
+    """Формат журнала, как у остальных сущностей: {поле: {"old": None, "new": значение}}."""
+    values = {
+        "vehicle_id": str(rec.vehicle_id),
+        "work_order_id": str(rec.work_order_id) if rec.work_order_id else None,
+        "priority": rec.priority,
+        "text": rec.text,
+    }
+    return {k: {"old": None, "new": v} for k, v in values.items()}
 
 
 async def _order_number(session: AsyncSession, order_id: uuid.UUID | None) -> str | None:
@@ -69,12 +80,7 @@ async def create_for_mechanic(
         entity_id=rec.id,
         location_id=order.location_id,
         user_id=user.id,
-        changes={
-            "vehicle_id": str(rec.vehicle_id),
-            "work_order_id": str(order.id),
-            "priority": rec.priority,
-            "text": rec.text,
-        },
+        changes=_created(rec),
         client=client,
     )
     await session.commit()
@@ -151,12 +157,7 @@ async def create_for_vehicle(
         entity_id=rec.id,
         location_id=order.location_id if order else None,
         user_id=actor.id,
-        changes={
-            "vehicle_id": str(vehicle_id),
-            "work_order_id": str(order.id) if order else None,
-            "priority": rec.priority,
-            "text": rec.text,
-        },
+        changes=_created(rec),
         client=client,
     )
     await session.commit()

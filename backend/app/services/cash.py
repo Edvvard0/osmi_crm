@@ -1,6 +1,7 @@
 """Касса: оплаты и возвраты по заказам, расходы, категории расходов, кассовый отчёт и операции."""
 
 import uuid
+from collections.abc import Iterable
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
@@ -77,7 +78,9 @@ async def _zones(session: AsyncSession, location_ids: set[uuid.UUID]) -> dict[uu
     return {i: ZoneInfo(tz) for i, tz in rows}
 
 
-async def _users(session: AsyncSession, ids: set[uuid.UUID | None]) -> dict[uuid.UUID, UserRef]:
+async def _users(
+    session: AsyncSession, ids: Iterable[uuid.UUID | None]
+) -> dict[uuid.UUID, UserRef]:
     real = {i for i in ids if i is not None}
     if not real:
         return {}
@@ -246,15 +249,16 @@ async def create_payment(
 async def refund_payment(
     session: AsyncSession,
     actor: User,
+    allowed: list[uuid.UUID],
     payment_id: uuid.UUID,
     data: RefundCreate,
     client: ClientInfo,
 ) -> tuple[PaymentRead, bool]:
     """Возврат по платежу (только директор — проверяется в роутере)."""
     src = await session.get(Payment, payment_id)
-    if src is None:
+    if src is None or src.location_id not in allowed:
         raise AppError(404, "not_found")
-    order = await _lock_order(session, [src.location_id], src.work_order_id)
+    order = await _lock_order(session, allowed, src.work_order_id)
     existing = await _by_request_id(session, actor.id, data.client_request_id)
     if existing is not None:
         if existing.refund_of_id != src.id:

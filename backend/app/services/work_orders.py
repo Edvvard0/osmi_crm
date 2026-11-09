@@ -28,6 +28,7 @@ from app.models import (
     Vehicle,
 )
 from app.models.appointment import Appointment, AppointmentService
+from app.models.mechanic import PartRequest
 from app.models.work_order import (
     LocationCounter,
     WorkOrder,
@@ -126,7 +127,8 @@ def computed_department(items: list[WorkOrderItem], current: str) -> str:
 
 
 def max_discount(order: WorkOrder, items: list[WorkOrderItem]) -> Decimal:
-    values = [order.discount_percent] + [i.discount_percent for i in items if i.status != "cancelled"]
+    values = [order.discount_percent]
+    values += [i.discount_percent for i in items if i.status != "cancelled"]
     return max(values)
 
 
@@ -342,7 +344,8 @@ async def _detail(session: AsyncSession, order: WorkOrder) -> WorkOrderRead:
     users = dict(ctx.users)
     missing = extra_ids - users.keys()
     if missing:
-        users.update({u.id: u for u in await session.scalars(select(User).where(User.id.in_(missing)))})
+        found = await session.scalars(select(User).where(User.id.in_(missing)))
+        users.update({u.id: u for u in found})
     tz = ctx.zones[order.location_id]
     stock = await stock_service.stock_for_parts(
         session,
@@ -356,6 +359,9 @@ async def _detail(session: AsyncSession, order: WorkOrder) -> WorkOrderRead:
 
     def local(dt: datetime | None) -> datetime | None:
         return dt.astimezone(tz) if dt else None
+
+    def local_req(dt: datetime) -> datetime:
+        return dt.astimezone(tz)
 
     return WorkOrderRead(
         **_row(order, ctx, datetime.now(UTC)),
@@ -419,12 +425,12 @@ async def _detail(session: AsyncSession, order: WorkOrder) -> WorkOrderRead:
                 unit_cost=p.unit_cost,
                 in_stock=stock.get(p.part_id) if p.part_id is not None else None,
                 added_by=_ref(users[p.added_by]),
-                created_at=local(p.created_at),  # type: ignore[arg-type]
+                created_at=local_req(p.created_at),
             )
             for p in parts
         ],
         allowed_transitions=list(TRANSITIONS[order.status]),
-        updated_at=local(order.updated_at),  # type: ignore[arg-type]
+        updated_at=local_req(order.updated_at),
     )
 
 
@@ -639,7 +645,9 @@ async def board(
         rows = await session.scalars(
             select(WorkOrder)
             .where(*col)
-            .order_by(WorkOrder.planned_ready_at.asc().nulls_last(), WorkOrder.created_at, WorkOrder.id)
+            .order_by(
+                WorkOrder.planned_ready_at.asc().nulls_last(), WorkOrder.created_at, WorkOrder.id
+            )
             .limit(BOARD_LIMIT)
         )
         columns.append((status, total, list(rows)))
@@ -647,7 +655,7 @@ async def board(
     reads = {r.id: r for r in await _list_reads(session, flat)}
     return OrderBoard(
         columns=[
-            BoardColumn(status=s, total=t, items=[reads[o.id] for o in rows])  # type: ignore[arg-type]
+            BoardColumn(status=s, total=t, items=[reads[o.id] for o in rows])
             for s, t, rows in columns
         ]
     )
@@ -729,8 +737,8 @@ async def status_history(
     return [
         StatusHistoryEntry(
             id=r.id,
-            from_status=r.from_status,  # type: ignore[arg-type]
-            to_status=r.to_status,  # type: ignore[arg-type]
+            from_status=r.from_status,
+            to_status=r.to_status,
             changed_by=_ref(users[r.changed_by]),
             comment=r.comment,
             created_at=r.created_at.astimezone(tz),
@@ -845,7 +853,9 @@ def _order_snapshot(o: WorkOrder) -> dict[str, Any]:
         "complaint": o.complaint,
         "intake_notes": o.intake_notes,
         "diagnosis": o.diagnosis,
-        "planned_ready_at": _iso(o.planned_ready_at.astimezone(UTC)) if o.planned_ready_at else None,
+        "planned_ready_at": (
+            _iso(o.planned_ready_at.astimezone(UTC)) if o.planned_ready_at else None
+        ),
         "discount_percent": f"{o.discount_percent:.2f}",
         "manager_id": str(o.manager_id),
         "vehicle_id": str(o.vehicle_id),
@@ -920,16 +930,13 @@ async def _check_manager(
     session: AsyncSession, manager_id: uuid.UUID, location_id: uuid.UUID
 ) -> User:
     user = await session.get(User, manager_id)
-    ok = user is not None and user.is_active and user.role in (Role.manager, Role.director)
-    if ok and user.role != Role.director:  # type: ignore[union-attr]
-        ok = bool(
-            await session.scalar(
-                select(UserLocation.user_id).where(
-                    UserLocation.user_id == manager_id, UserLocation.location_id == location_id
-                )
-            )
+    if user is None or not user.is_active or user.role not in (Role.manager, Role.director):
+        raise _unprocessable(manager_id="invalid")
+    if user.role != Role.director and not await session.scalar(
+        select(UserLocation.user_id).where(
+            UserLocation.user_id == manager_id, UserLocation.location_id == location_id
         )
-    if not ok or user is None:
+    ):
         raise _unprocessable(manager_id="invalid")
     return user
 
@@ -1013,7 +1020,11 @@ async def _build_item(
         return f"{prefix}{name}"
 
     if new.service_id is not None:
-        errors = {key(n): "not_allowed" for n in ("name", "department", "norm_hours") if getattr(new, n) is not None}
+        errors = {
+            key(n): "not_allowed"
+            for n in ("name", "department", "norm_hours")
+            if getattr(new, n) is not None
+        }
         service = await session.get(Service, new.service_id)
         if service is None or not service.is_active:
             errors[key("service_id")] = "invalid"
@@ -1143,7 +1154,11 @@ async def _insert_order(
             location_id=appointment.location_id,
             changes={
                 "work_order_id": {"old": None, "new": str(order.id)},
-                **({"status": {"old": old_status, "new": "arrived"}} if old_status != "arrived" else {}),
+                **(
+                    {"status": {"old": old_status, "new": "arrived"}}
+                    if old_status != "arrived"
+                    else {}
+                ),
             },
             client=client_info,
         )
@@ -1411,7 +1426,9 @@ async def update_order(
     changes = diff(old, _order_snapshot(order))
     if not changes:
         return await _respond(session, actor, order)
-    await _save(session, actor, order, items, parts, old_max_discount=old_max, old_version=old_version)
+    await _save(
+        session, actor, order, items, parts, old_max_discount=old_max, old_version=old_version
+    )
     if order.planned_ready_at != old_planned:
         for item in items:
             if item.status in ITEM_OPEN and item.mechanic_id is not None:
@@ -1523,7 +1540,8 @@ async def change_status(
         parts,
         to,
         comment=(
-            f"Закрыт без полной оплаты (долг {forced_due}). {data.comment}"
+            # comment в истории — String(500), а data.comment сам может быть до 500 символов
+            f"Закрыт без полной оплаты (долг {forced_due}). {data.comment}"[:500]
             if forced_due is not None
             else data.comment or (data.cancel_reason if to == "cancelled" else None)
         ),
@@ -1547,7 +1565,11 @@ async def change_status(
         location_id=order.location_id,
         changes={
             "status": {"old": old, "new": to},
-            **({"cancel_reason": {"old": None, "new": data.cancel_reason}} if to == "cancelled" else {}),
+            **(
+                {"cancel_reason": {"old": None, "new": data.cancel_reason}}
+                if to == "cancelled"
+                else {}
+            ),
             **({"forced": True, "balance_due": str(forced_due)} if forced_due is not None else {}),
         },
         client=client_info,
@@ -1663,7 +1685,7 @@ async def update_item(
     if locked and item.status != "pending":
         raise AppError(409, "item_started")
     if item.service_id is not None:
-        bad = {f: "not_allowed" for f in ("name", "norm_hours") if f in values}
+        bad: dict[str, str] = {f: "not_allowed" for f in ("name", "norm_hours") if f in values}
         if bad:
             raise AppError(422, "validation_error", bad)
         if (
@@ -1690,7 +1712,9 @@ async def update_item(
     changes = diff(old, _item_snapshot(item))
     if not changes:
         return await _respond(session, actor, order)
-    await _save(session, actor, order, items, parts, old_max_discount=old_max, old_version=old_version)
+    await _save(
+        session, actor, order, items, parts, old_max_discount=old_max, old_version=old_version
+    )
     _audit(
         session,
         actor,
@@ -1773,7 +1797,9 @@ async def cancel_item(
     old_max, old_version = max_discount(order, items), order.version
     await timers.close_open_log(session, item)
     old_status, item.status = item.status, "cancelled"
-    await _save(session, actor, order, items, parts, old_max_discount=old_max, old_version=old_version)
+    await _save(
+        session, actor, order, items, parts, old_max_discount=old_max, old_version=old_version
+    )
     _audit(
         session,
         actor,
@@ -1816,7 +1842,9 @@ async def complete_item(
         item.started_at = now
     await session.flush()
     await on_item_done(session, order, actor_id=actor.id, client_info=client_info)
-    await _save(session, actor, order, items, parts, old_max_discount=old_max, old_version=old_version)
+    await _save(
+        session, actor, order, items, parts, old_max_discount=old_max, old_version=old_version
+    )
     _audit(
         session,
         actor,
@@ -1868,10 +1896,15 @@ async def add_part(
         part = None
     request = None
     if data.part_request_id is not None:
-        from app.models.mechanic import PartRequest
-
-        request = await session.get(PartRequest, data.part_request_id, populate_existing=True)
-        if request is None or request.work_order_id != order.id or request.status not in ("new", "approved"):
+        # FOR UPDATE: approve/reject заявки (part_requests.py) блокируют только саму заявку
+        request = await session.get(
+            PartRequest, data.part_request_id, with_for_update=True, populate_existing=True
+        )
+        if (
+            request is None
+            or request.work_order_id != order.id
+            or request.status not in ("new", "approved")
+        ):
             raise _unprocessable(part_request_id="invalid")
 
     items = await _items_of(session, order.id)

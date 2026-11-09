@@ -4,6 +4,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Literal
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
@@ -172,13 +173,39 @@ async def _ensure_phone_free(
         )
 
 
+def _is_unique_violation(exc: IntegrityError) -> bool:
+    pgcode = getattr(exc.orig, "sqlstate", None) or getattr(exc.orig, "pgcode", None)
+    return str(pgcode) == "23505"
+
+
+async def _flush_checked(
+    session: AsyncSession, client: Client, values: dict[str, Any] | None = None
+) -> None:
+    """Запись клиента под savepoint: параллельный запрос с тем же телефоном, проскочивший
+    `_ensure_phone_free`, упрётся в uq_clients_phone_active — отвечаем `duplicate_phone`
+    с данными существующего клиента, а не общим `unique_violation`."""
+    # После отката savepoint атрибуты объекта истекают (ленивая загрузка в async недоступна),
+    # поэтому телефон и id запоминаются заранее.
+    phone = (values or {}).get("phone") or client.phone
+    exclude_id = client.id
+    try:
+        async with session.begin_nested():
+            session.add(client)
+            for field, value in (values or {}).items():
+                setattr(client, field, value)
+            await session.flush()
+    except IntegrityError as exc:
+        if _is_unique_violation(exc) and phone:
+            await _ensure_phone_free(session, phone, exclude_id)
+        raise
+
+
 async def create_client(
     session: AsyncSession, actor: User, data: ClientCreate, client_info: ClientInfo
 ) -> ClientRead:
     await _ensure_phone_free(session, data.phone)
     client = Client(**data.model_dump(), created_by=actor.id)
-    session.add(client)
-    await session.flush()
+    await _flush_checked(session, client)
     write_audit(
         session,
         action="create",
@@ -205,8 +232,7 @@ async def update_client(
     if new_phone is not None and new_phone != client.phone and client.archived_at is None:
         await _ensure_phone_free(session, new_phone, client.id)
     old = _snapshot(client)
-    for field, value in values.items():
-        setattr(client, field, value)
+    await _flush_checked(session, client, values)
     changes = diff(old, _snapshot(client))
     if changes:
         write_audit(
@@ -235,7 +261,7 @@ async def set_archived(
             await _ensure_phone_free(session, client.phone, client.id)
         new_value: datetime | None = utcnow() if archive else None
         old_value = client.archived_at
-        client.archived_at = new_value
+        await _flush_checked(session, client, {"archived_at": new_value})
         write_audit(
             session,
             action="archive" if archive else "restore",

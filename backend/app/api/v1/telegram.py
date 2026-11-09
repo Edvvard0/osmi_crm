@@ -40,7 +40,9 @@ async def unlink(user: CurrentUser, session: SessionDep, client: Client) -> Resp
 
 
 @router.get("/telegram/notification-settings", response_model=list[NotificationSetting])
-async def get_notification_settings(user: CurrentUser, session: SessionDep) -> list[NotificationSetting]:
+async def get_notification_settings(
+    user: CurrentUser, session: SessionDep
+) -> list[NotificationSetting]:
     return await svc.list_settings(session, user)
 
 
@@ -65,9 +67,16 @@ async def webhook(request: Request, session: SessionDep) -> dict[str, object]:
     declared = request.headers.get("content-length")
     if declared and declared.isdigit() and int(declared) > MAX_UPDATE_BYTES:
         raise AppError(413, "payload_too_large")
-    body = await request.body()
-    if len(body) > MAX_UPDATE_BYTES:
-        raise AppError(413, "payload_too_large")
+    # Тело читается порциями с лимитом: без content-length (chunked) request.body()
+    # сначала загрузил бы в память всё целиком.
+    chunks: list[bytes] = []
+    size = 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > MAX_UPDATE_BYTES:
+            raise AppError(413, "payload_too_large")
+        chunks.append(chunk)
+    body = b"".join(chunks)
     try:
         update = json.loads(body)
     except ValueError:

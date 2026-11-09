@@ -64,7 +64,11 @@ async def start_task(
 
 @router.post("/tasks/{item_id}/pause", response_model=PauseResult)
 async def pause_task(
-    item_id: uuid.UUID, user: Mechanic, allowed: AllowedLocations, session: SessionDep, client: Client
+    item_id: uuid.UUID,
+    user: Mechanic,
+    allowed: AllowedLocations,
+    session: SessionDep,
+    client: Client,
 ) -> PauseResult:
     return await svc.pause_task(session, user, allowed, item_id, client)
 

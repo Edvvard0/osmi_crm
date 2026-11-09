@@ -152,7 +152,10 @@ async def test_create_client_contract_shape(api, db, ctx):
     assert set(c) == {
         "id", "client_type", "full_name", "company_name", "inn", "phone", "phone_extra", "email",
         "source", "discount_percent", "notes", "vehicles_count", "created_at", "archived_at",
+        # статистика по закрытым заказам (расширение модуля 5)
+        "orders_count", "total_spent", "average_check", "last_visit_at",
     }  # fmt: skip
+    assert c["orders_count"] == 0 and c["total_spent"] == "0.00" and c["last_visit_at"] is None
     assert c["phone"] == "+79991234567" and c["phone_extra"] == "+79120001122"
     assert c["discount_percent"] == 7.5 and c["email"] == "info@romashka.ru"
     assert c["vehicles_count"] == 0 and c["archived_at"] is None
@@ -214,6 +217,30 @@ async def test_duplicate_phone_details_and_archived_not_blocking(api, db, ctx):
     # восстановление архивного дубля запрещено
     r = await api.post(f"{API}/clients/{first['id']}/restore", headers=ctx["m"])
     assert r.status_code == 409 and r.json()["error"]["details"]["existing_id"] == second["id"]
+
+
+@integration
+async def test_duplicate_phone_race_is_duplicate_phone_not_unique_violation(
+    api, ctx, monkeypatch
+):
+    """Гонка: предварительная проверка не видит конкурента, срабатывает уникальный индекс."""
+    from app.services import clients as svc
+
+    first = await mk_client(api, ctx["m"])
+    real = svc._ensure_phone_free
+    calls = 0
+
+    async def skip_first(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls > 1:
+            await real(*args, **kwargs)
+
+    monkeypatch.setattr(svc, "_ensure_phone_free", skip_first)
+    r = await api.post(f"{API}/clients", headers=ctx["m"], json=cbody(full_name="Другой"))
+    assert r.status_code == 409, r.text
+    err = r.json()["error"]
+    assert err["code"] == "duplicate_phone" and err["details"]["existing_id"] == first["id"]
 
 
 @integration

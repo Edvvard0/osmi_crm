@@ -19,7 +19,11 @@ async def poll(stop: asyncio.Event, max_iterations: int | None = None) -> None:
     if client is None:
         log.info("bot_disabled")
         return
-    await client.delete_webhook()  # getUpdates не работает при установленном вебхуке
+    try:
+        await client.delete_webhook()  # getUpdates не работает при установленном вебхуке
+    except telegram_client.TelegramError as exc:
+        # Не фатально: при живом вебхуке getUpdates вернёт ошибку и цикл повторит попытку.
+        log.warning("bot_delete_webhook_failed", kind=exc.kind)
     offset: int | None = None
     n = 0
     while not stop.is_set() and (max_iterations is None or n < max_iterations):
@@ -31,11 +35,18 @@ async def poll(stop: asyncio.Event, max_iterations: int | None = None) -> None:
             await asyncio.sleep(3)
             continue
         for update in updates:
+            if not isinstance(update, dict):
+                continue
             update_id = update.get("update_id")
             if isinstance(update_id, int):
                 offset = update_id + 1
-            async with session_scope() as session:
-                await telegram_bot.handle_update(session, update)
+            # Сбой обработки одного сообщения (БД и т.п.) не должен останавливать бота;
+            # offset уже сдвинут, поэтому «ядовитое» сообщение не зациклит polling.
+            try:
+                async with session_scope() as session:
+                    await telegram_bot.handle_update(session, update)
+            except Exception:
+                log.exception("bot_update_failed", update_id=update_id)
 
 
 async def run() -> None:  # pragma: no cover

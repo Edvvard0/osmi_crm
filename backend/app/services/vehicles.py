@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
@@ -91,6 +92,32 @@ async def _ensure_vin_free(
         )
 
 
+def _is_unique_violation(exc: IntegrityError) -> bool:
+    pgcode = getattr(exc.orig, "sqlstate", None) or getattr(exc.orig, "pgcode", None)
+    return str(pgcode) == "23505"
+
+
+async def _flush_checked(
+    session: AsyncSession, vehicle: Vehicle, values: dict[str, Any] | None = None
+) -> None:
+    """Запись автомобиля под savepoint: параллельный запрос с тем же VIN, проскочивший
+    `_ensure_vin_free`, упрётся в uq_vehicles_vin_active — отвечаем `duplicate_vin`
+    с данными существующего автомобиля, а не общим `unique_violation`."""
+    # После отката savepoint атрибуты объекта истекают — VIN и id запоминаются заранее.
+    vin = (values or {}).get("vin") or vehicle.vin
+    exclude_id = vehicle.id
+    try:
+        async with session.begin_nested():
+            session.add(vehicle)
+            for field, value in (values or {}).items():
+                setattr(vehicle, field, value)
+            await session.flush()
+    except IntegrityError as exc:
+        if _is_unique_violation(exc) and vin:
+            await _ensure_vin_free(session, vin, exclude_id)
+        raise
+
+
 async def create_vehicle(
     session: AsyncSession,
     actor: User,
@@ -106,8 +133,7 @@ async def create_vehicle(
     if data.vin:
         await _ensure_vin_free(session, data.vin)
     vehicle = Vehicle(client_id=client_id, **data.model_dump())
-    session.add(vehicle)
-    await session.flush()
+    await _flush_checked(session, vehicle)
     write_audit(
         session,
         action="create",
@@ -134,8 +160,7 @@ async def update_vehicle(
     if new_vin and new_vin != vehicle.vin and vehicle.archived_at is None:
         await _ensure_vin_free(session, new_vin, vehicle.id)
     old = _snapshot(vehicle)
-    for field, value in values.items():
-        setattr(vehicle, field, value)
+    await _flush_checked(session, vehicle, values)
     changes = diff(old, _snapshot(vehicle))
     if changes:
         write_audit(
@@ -164,7 +189,7 @@ async def set_archived(
             await _ensure_vin_free(session, vehicle.vin, vehicle.id)
         new_value: datetime | None = utcnow() if archive else None
         old_value = vehicle.archived_at
-        vehicle.archived_at = new_value
+        await _flush_checked(session, vehicle, {"archived_at": new_value})
         write_audit(
             session,
             action="archive" if archive else "restore",

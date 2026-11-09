@@ -157,6 +157,22 @@ async def test_status_flow_and_guards(api, ctx):
     assert f"{o['number']}-act.pdf" in r.headers["content-disposition"]
 
 
+async def test_force_close_with_max_length_comment(api, ctx):
+    # регрессия: префикс «Закрыт без полной оплаты…» + комментарий 500 символов не помещались в String(500)
+    o = await make(api, ctx, items=[custom(mechanic_id=str(ctx.mechanic.id))])
+    o = (await status(api, ctx, o, "in_progress")).json()
+    item = o["items"][0]
+    r = await api.post(f"{WO}/{o['id']}/items/{item['id']}/complete", headers=ctx.m, json={"version": o["version"]})
+    assert r.status_code == 200, r.text
+    o = (await status(api, ctx, r.json(), "ready")).json()
+    assert o["status"] == "ready"
+    r = await status(api, ctx, o, "closed", h=ctx.d, force_close=True, comment="я" * 500)
+    assert r.status_code == 200, r.text
+    hist = (await api.get(f"{WO}/{o['id']}/history", headers=ctx.m)).json()
+    assert hist[-1]["to_status"] == "closed" and len(hist[-1]["comment"]) == 500
+    assert hist[-1]["comment"].startswith("Закрыт без полной оплаты (долг 100.00).")
+
+
 async def test_cancel_requires_reason_and_final_state(api, ctx):
     o = await make(api, ctx, items=[custom()])
     r = await status(api, ctx, o, "cancelled", cancel_reason="Клиент отказался")

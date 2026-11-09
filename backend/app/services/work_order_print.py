@@ -5,6 +5,7 @@
 """
 
 import uuid
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Literal
@@ -58,8 +59,8 @@ def _qty(value: Decimal, places: int) -> str:
     return text.rstrip("0").rstrip(".") if "." in text else text
 
 
-def _dt(value: object) -> str:
-    return value.strftime("%d.%m.%Y %H:%M") if value is not None else "—"  # type: ignore[attr-defined]
+def _dt(value: datetime | None) -> str:
+    return value.strftime("%d.%m.%Y %H:%M") if value is not None else "—"
 
 
 class _Doc(FPDF):
@@ -86,11 +87,17 @@ class _Doc(FPDF):
             self.line_text(value)
             self.ln(1)
 
-    def table(self, widths: tuple[int, ...], header: tuple[str, ...], rows: list[tuple[str, ...]]) -> None:  # type: ignore[override]
+    def grid(
+        self, widths: tuple[int, ...], header: tuple[str, ...], rows: list[tuple[str, ...]]
+    ) -> None:
         self.set_font(_FONT, "B", 9)
         aligns = tuple(Align.L if i == 0 else Align.R for i in range(len(header)))
-        with super().table(
-            col_widths=widths, text_align=aligns, line_height=5, padding=1, first_row_as_headings=True
+        with self.table(
+            col_widths=widths,
+            text_align=aligns,
+            line_height=5,
+            padding=1,
+            first_row_as_headings=True,
         ) as table:
             head = table.row()
             for h in header:
@@ -137,7 +144,12 @@ def _client_block(doc: _Doc, order: WorkOrderRead, with_complaint: bool) -> None
 
 
 def _totals(
-    doc: _Doc, works: Decimal, parts: Decimal, discount_percent: Decimal, discount: Decimal, total: Decimal
+    doc: _Doc,
+    works: Decimal,
+    parts: Decimal,
+    discount_percent: Decimal,
+    discount: Decimal,
+    total: Decimal,
 ) -> None:
     doc.set_font(_FONT, "", 10)
     doc.line_text(f"Работы: {_money(works)}")
@@ -167,7 +179,7 @@ def build_pdf(
     items = [i for i in order.items if (i.status == "done" if act else i.status != "cancelled")]
     if items:
         doc.title_line("Работы", 11)
-        doc.table(
+        doc.grid(
             (82, 20, 28, 20, 36),
             ("Наименование", "Кол-во", "Цена", "Скидка", "Сумма"),
             [
@@ -184,7 +196,7 @@ def build_pdf(
     parts = list(order.parts)
     if parts:
         doc.title_line("Запчасти и материалы", 11)
-        doc.table(
+        doc.grid(
             (82, 20, 28, 20, 36),
             ("Наименование", "Кол-во", "Цена", "", "Сумма"),
             [
@@ -196,8 +208,9 @@ def build_pdf(
     if act:
         works = sum((i.total for i in items), Decimal("0.00"))
         parts_sum = sum((p.total for p in parts), Decimal("0.00"))
-        discount = ((works + parts_sum) * order.discount_percent / 100).quantize(Decimal("0.01"))
-        _totals(doc, works, parts_sum, order.discount_percent, discount, works + parts_sum - discount)
+        discount = svc.q2((works + parts_sum) * order.discount_percent / 100)
+        total = works + parts_sum - discount
+        _totals(doc, works, parts_sum, order.discount_percent, discount, total)
     else:
         _totals(
             doc,

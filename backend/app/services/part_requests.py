@@ -4,8 +4,7 @@ import uuid
 from collections.abc import Sequence
 from decimal import Decimal
 
-from sqlalchemy import case, func, select
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy import ColumnElement, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -79,7 +78,7 @@ def _mechanic_read(
         description=req.description,
         quantity=req.quantity,
         unit=part.unit if part else None,
-        status=req.status,  # type: ignore[arg-type]
+        status=req.status,
         reject_reason=req.reject_reason,
         created_at=req.created_at,
         handled_at=req.handled_at,
@@ -157,7 +156,10 @@ async def list_for_mechanic(
     limit: int,
     offset: int,
 ) -> PartRequestPage:
-    conds = [PartRequest.mechanic_id == user.id, WorkOrder.location_id.in_(allowed)]
+    conds: list[ColumnElement[bool]] = [
+        PartRequest.mechanic_id == user.id,
+        WorkOrder.location_id.in_(allowed),
+    ]
     if status is not None:
         conds.append(PartRequest.status == status)
     total = await session.scalar(
@@ -189,20 +191,14 @@ async def list_for_mechanic(
 async def _in_stock(
     session: AsyncSession, pairs: Sequence[tuple[uuid.UUID, uuid.UUID]]
 ) -> dict[tuple[uuid.UUID, uuid.UUID], Decimal]:
-    """Остатки (точка, запчасть); пусто, если склад недоступен."""
+    """Остатки (точка, запчасть): один запрос на точку."""
     by_location: dict[uuid.UUID, set[uuid.UUID]] = {}
     for loc, part in pairs:
         by_location.setdefault(loc, set()).add(part)
     result: dict[tuple[uuid.UUID, uuid.UUID], Decimal] = {}
-    try:
-        async with session.begin_nested():
-            for loc, parts in by_location.items():
-                stock = await stock_service.stock_for_parts(
-                    session, location_id=loc, part_ids=parts
-                )
-                result.update({(loc, pid): qty for pid, qty in stock.items()})
-    except DBAPIError:
-        return {}
+    for loc, parts in by_location.items():
+        stock = await stock_service.stock_for_parts(session, location_id=loc, part_ids=parts)
+        result.update({(loc, pid): qty for pid, qty in stock.items()})
     return result
 
 
@@ -235,7 +231,7 @@ async def _full_reads(session: AsyncSession, ids: Sequence[uuid.UUID]) -> list[P
             order=OrderBrief(
                 id=order.id,
                 number=order.number,
-                status=order.status,  # type: ignore[arg-type]
+                status=order.status,
                 version=order.version,
             ),
             vehicle=VehicleRef(
@@ -261,7 +257,7 @@ async def _full_reads(session: AsyncSession, ids: Sequence[uuid.UUID]) -> list[P
             ),
             description=req.description,
             quantity=req.quantity,
-            status=req.status,  # type: ignore[arg-type]
+            status=req.status,
             reject_reason=req.reject_reason,
             handled_by=UserRef(id=h.id, full_name=h.full_name) if h else None,
             handled_at=req.handled_at,
@@ -282,7 +278,7 @@ async def list_requests(
     offset: int,
 ) -> PartRequestFullPage:
     scope = work_orders._scope(location_id, allowed)
-    conds = [WorkOrder.location_id.in_(scope)]
+    conds: list[ColumnElement[bool]] = [WorkOrder.location_id.in_(scope)]
     if status is not None:
         conds.append(PartRequest.status == status)
     if order_id is not None:
@@ -332,11 +328,21 @@ async def summary(
 async def _lock_request(
     session: AsyncSession, allowed: list[uuid.UUID], request_id: uuid.UUID
 ) -> tuple[PartRequest, WorkOrder]:
-    req = await session.get(PartRequest, request_id, with_for_update=True, populate_existing=True)
-    if req is None:
+    """Заказ FOR UPDATE, затем заявка FOR UPDATE — тот же порядок, что в `add_part` модуля 5.
+
+    Обратный порядок (заявка → заказ) взаимоблокировался бы с `POST …/parts` по той же заявке,
+    а без блокировки заказа его статус мог смениться между проверкой и записью.
+    """
+    order_id = await session.scalar(
+        select(PartRequest.work_order_id).where(PartRequest.id == request_id)
+    )
+    if order_id is None:
         raise AppError(404, "not_found")
-    order = await session.get(WorkOrder, req.work_order_id)
+    order = await session.get(WorkOrder, order_id, with_for_update=True, populate_existing=True)
     if order is None or order.location_id not in allowed:
+        raise AppError(404, "not_found")
+    req = await session.get(PartRequest, request_id, with_for_update=True, populate_existing=True)
+    if req is None or req.work_order_id != order.id:
         raise AppError(404, "not_found")
     return req, order
 
@@ -344,7 +350,7 @@ async def _lock_request(
 async def _publish_handled(
     session: AsyncSession, actor: User, req: PartRequest, order: WorkOrder, status: str
 ) -> None:
-    payload: dict[str, str | None] = {
+    payload: dict[str, str | int | None] = {
         "request_id": str(req.id),
         "order_number": order.number,
         "description": req.description,

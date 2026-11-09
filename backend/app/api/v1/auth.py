@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from app.api.deps import Client, CurrentUser, SessionDep
 from app.core.config import get_settings
 from app.core.errors import AppError, error_response
-from app.core.ratelimit import login_limiter
+from app.core.ratelimit import RateLimiter, login_limiter
 from app.models import User
 from app.schemas.auth import ChangePassword, LoginRequest, TokenResponse
 from app.schemas.user import UserRead
@@ -14,6 +14,9 @@ from app.services import auth as svc
 from app.services.users import read_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# Подбор текущего пароля по украденному access-токену: тот же лимит, что у входа, на пользователя.
+password_limiter = RateLimiter()
 
 COOKIE = "refresh_token"
 COOKIE_PATH = "/api/v1/auth"
@@ -27,7 +30,7 @@ def _set_cookie(response: Response, token: str) -> None:
         max_age=settings.refresh_ttl_days * 86400,
         path=COOKIE_PATH,
         httponly=True,
-        secure=settings.env != "dev",
+        secure=settings.secure_cookies,
         samesite="strict",
     )
 
@@ -38,7 +41,7 @@ def _clear_cookie(response: Response) -> None:
         COOKIE,
         path=COOKIE_PATH,
         httponly=True,
-        secure=settings.env != "dev",
+        secure=settings.secure_cookies,
         samesite="strict",
     )
 
@@ -98,6 +101,8 @@ async def change_password(
     client: Client,
     refresh_token: Annotated[str | None, Cookie()] = None,
 ) -> Response:
+    if not password_limiter.allow(str(user.id), get_settings().login_per_minute):
+        raise AppError(429, "rate_limited")
     await svc.change_password(
         session, user, refresh_token, data.current_password, data.new_password, client
     )

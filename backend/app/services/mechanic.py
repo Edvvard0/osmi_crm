@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -62,7 +62,12 @@ async def load_item(
     lock: bool = False,
     visible_only: bool = True,
 ) -> tuple[WorkOrderItem, WorkOrder]:
-    """Своя позиция в доступной точке. `lock`: заказ FOR SHARE, затем позиция FOR UPDATE.
+    """Своя позиция в доступной точке. `lock`: заказ FOR UPDATE, затем позиция FOR UPDATE.
+
+    Заказ блокируется эксклюзивно (тот же порядок «заказ → позиции», что в модуле 5): старт
+    и завершение меняют заказ (`started_at`, автопереход в `quality_check`). При FOR SHARE два
+    механика одного заказа взаимоблокировались бы на повышении блокировки, а при параллельном
+    завершении двух последних работ каждый не видел бы чужого `done` — автопереход терялся.
 
     `visible_only` скрывает (404) отменённые позиции, отменённые заказы и заказы, закрытые
     более 7 дней назад; для действий таймера он выключен (там `invalid_state`).
@@ -76,14 +81,19 @@ async def load_item(
         raise not_found()
     order_stmt = select(WorkOrder).where(WorkOrder.id == item.work_order_id)
     if lock:
-        order_stmt = order_stmt.with_for_update(read=True)
+        order_stmt = order_stmt.with_for_update().execution_options(populate_existing=True)
     order = await session.scalar(order_stmt)
     if order is None or order.location_id not in allowed:
         raise not_found()
     if lock:
+        # Перечитываем под блокировкой: пока ждали заказ, позицию могли переназначить.
         item = await session.scalar(
             select(WorkOrderItem)
-            .where(WorkOrderItem.id == item_id)
+            .where(
+                WorkOrderItem.id == item_id,
+                WorkOrderItem.mechanic_id == user.id,
+                WorkOrderItem.work_order_id == order.id,
+            )
             .with_for_update()
             .execution_options(populate_existing=True)
         )
@@ -126,12 +136,12 @@ def _task(
         item_id=item.id,
         order_id=order.id,
         order_number=order.number,
-        order_status=order.status,  # type: ignore[arg-type]
-        department=item.department,  # type: ignore[arg-type]
+        order_status=order.status,
+        department=item.department,
         name=item.name,
         quantity=item.quantity,
         norm_hours=_norm_hours(item),
-        status=item.status,  # type: ignore[arg-type]
+        status=item.status,
         worked_seconds=seconds,
         running_since=running if item.status == "in_progress" else None,
         vehicle=_task_vehicle(vehicle),
@@ -158,7 +168,7 @@ async def build_task(
 # ---------------- список и карточка ----------------
 
 
-def _base_select():  # type: ignore[no-untyped-def]
+def _base_select() -> Select[WorkOrderItem, WorkOrder, Vehicle, str]:
     return (
         select(WorkOrderItem, WorkOrder, Vehicle, Location.timezone)
         .join(WorkOrder, WorkOrder.id == WorkOrderItem.work_order_id)
@@ -233,8 +243,9 @@ async def list_tasks(
 
     ids = [r[0].id for r in rows] + ([active_id] if active_id else [])
     timer = await timers.worked_seconds(session, ids, at)
+    active = _task(active_row[0], active_row[1], active_row[2], timer, at) if active_row else None
     return TaskList(
-        active=_task(active_row[0], active_row[1], active_row[2], timer, at) if active_row else None,
+        active=active,
         items=[_task(i, o, v, timer, at) for i, o, v, _ in rows],
         server_time=at,
     )
@@ -293,7 +304,7 @@ async def get_task(
                 name=i.name,
                 quantity=i.quantity,
                 norm_hours=_norm_hours(i),
-                status=i.status,  # type: ignore[arg-type]
+                status=i.status,
                 worked_seconds=timer.get(i.id, (0, None))[0],
                 running_since=timer.get(i.id, (0, None))[1] if i.status == "in_progress" else None,
             )
@@ -489,7 +500,7 @@ async def finish_task(
     if item.status == "done":
         task = await build_task(session, item, order, at)
         return FinishResult(
-            task=task, order_status=order.status, order_auto_moved=False, server_time=at  # type: ignore[arg-type]
+            task=task, order_status=order.status, order_auto_moved=False, server_time=at
         )
     if item.status not in ("in_progress", "paused"):
         raise AppError(409, "invalid_state")
@@ -533,7 +544,7 @@ async def finish_task(
     await session.commit()
     return FinishResult(
         task=task,
-        order_status=order.status,  # type: ignore[arg-type]
+        order_status=order.status,
         order_auto_moved=moved,
         server_time=at,
     )
