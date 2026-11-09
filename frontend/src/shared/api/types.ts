@@ -89,3 +89,78 @@ export interface SearchHit {
   subtitle: string;
   client_id: string;
 }
+
+/* ===== Модуль 3: каталог, цены, посты, запчасти. Деньги и часы — строки-десятичные. ===== */
+
+export type Department = "service" | "detailing";
+export const DEPARTMENT_LABELS: Record<Department, string> = { service: "Сервис", detailing: "Детейлинг" };
+
+export type ServiceUnit = "pcs" | "hour" | "set" | "sqm";
+export const SERVICE_UNIT_LABELS: Record<ServiceUnit, string> = { pcs: "шт", hour: "час", set: "компл.", sqm: "м²" };
+
+export interface Category {
+  id: string;
+  name: string;
+  department: Department;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface Service {
+  id: string;
+  category_id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  department: Department;
+  unit: ServiceUnit;
+  base_price: string;
+  norm_hours: string | null;
+  duration_minutes: number;
+  is_active: boolean;
+  /** Эффективная цена для точки из параметра location_id (иначе base_price). */
+  price: string;
+}
+
+export interface ServicePrice {
+  service_id: string;
+  location_id: string;
+  price: string;
+  updated_at: string;
+}
+
+export type PostType = "lift" | "diagnostics" | "detailing_box" | "wash" | "other";
+export const POST_TYPE_LABELS: Record<PostType, string> = {
+  lift: "Подъёмник",
+  diagnostics: "Диагностика",
+  detailing_box: "Бокс детейлинга",
+  wash: "Мойка",
+  other: "Другое",
+};
+
+export interface Post {
+  id: string;
+  location_id: string;
+  name: string;
+  post_type: PostType;
+  department: Department;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export type PartUnit = "pcs" | "l" | "ml" | "kg" | "g" | "m" | "set";
+export const PART_UNIT_LABELS: Record<PartUnit, string> = { pcs: "шт", l: "л", ml: "мл", kg: "кг", g: "г", m: "м", set: "компл." };
+export type PartDepartment = Department | "both";
+export const PART_DEPARTMENT_LABELS: Record<PartDepartment, string> = { service: "Сервис", detailing: "Детейлинг", both: "Оба отдела" };
+
+export interface Part {
+  id: string;
+  sku: string;
+  name: string;
+  brand: string | null;
+  barcode: string | null;
+  unit: PartUnit;
+  department: PartDepartment;
+  sale_price: string;
+  is_active: boolean;
+}

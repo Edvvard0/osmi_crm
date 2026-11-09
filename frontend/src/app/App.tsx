@@ -8,6 +8,7 @@ import { RequireAuth, RequireRole } from "@/features/auth/guards";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { CatalogPage } from "@/pages/catalog/CatalogPage";
 import { ClientFormPage } from "@/pages/clients/ClientFormPage";
 import { ClientPage } from "@/pages/clients/ClientPage";
 import { ClientsPage } from "@/pages/clients/ClientsPage";
@@ -47,6 +48,9 @@ export function App() {
                       <Route path="clients/:id/vehicles/new" element={<VehicleNewPage />} />
                       <Route path="vehicles/:id" element={<VehiclePage />} />
                       <Route path="vehicles/:id/edit" element={<VehicleEditPage />} />
+                    </Route>
+                    <Route element={<RequireRole roles={["manager", "director"]} />}>
+                      <Route path="catalog" element={<CatalogPage />} />
                     </Route>
                     <Route element={<RequireRole roles={["director"]} />}>
                       <Route path="users" element={<UsersPage />} />

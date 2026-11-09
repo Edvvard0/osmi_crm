@@ -15,13 +15,15 @@ interface NavItem { to: string; label: string; roles: Role[] }
 const NAV: NavItem[] = [
   { to: "/", label: "Рабочий стол", roles: ["mechanic", "manager", "director"] },
   { to: "/clients", label: "Клиенты", roles: ["manager", "director"] },
+  { to: "/catalog", label: "Каталог и цены", roles: ["director"] },
+  { to: "/catalog", label: "Каталог", roles: ["manager"] },
   { to: "/users", label: "Сотрудники", roles: ["director"] },
   { to: "/locations", label: "Точки", roles: ["director"] },
   { to: "/settings", label: "Настройки", roles: ["mechanic", "manager", "director"] },
 ];
 
 const linkCls = ({ isActive }: { isActive: boolean }) =>
-  clsx("rounded px-3 py-2 text-sm", isActive ? "bg-accent text-accent-fg" : "text-muted hover:bg-border/50");
+  clsx("flex-1 whitespace-nowrap rounded px-3 py-2 text-center text-sm md:flex-none md:text-left", isActive ? "bg-accent text-accent-fg" : "text-muted hover:bg-border/50");
 
 function LocationSwitcher() {
   const { items, value, set, isDirector } = useActiveLocation();
@@ -75,7 +77,7 @@ export function Layout() {
         </main>
       </div>
       {/* Mobile: нижняя панель */}
-      <nav className="fixed inset-x-0 bottom-0 flex justify-around border-t border-border bg-surface p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden" aria-label="Навигация">
+      <nav className="fixed inset-x-0 bottom-0 flex gap-1 overflow-x-auto border-t border-border bg-surface p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden" aria-label="Навигация">
         {nav.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.to === "/"} className={linkCls}>{n.label}</NavLink>
         ))}
