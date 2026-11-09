@@ -1,0 +1,18 @@
+# make test — одноразовые контейнеры, ничего не остаётся
+services:
+  db:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: crm, POSTGRES_PASSWORD: crm, POSTGRES_DB: crm_test }
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U crm"], interval: 3s, timeout: 3s, retries: 10 }
+  api-tests:
+    build: { context: ./backend, target: dev }
+    environment:
+      ENV: test
+      DATABASE_URL: postgresql+asyncpg://crm:crm@db:5432/crm_test
+    depends_on: { db: { condition: service_healthy } }
+    command: sh -c "alembic upgrade head && ruff check . && mypy app && pytest --cov --cov-fail-under=85"
+  web-tests:
+    build: { context: ./frontend, target: deps }
+    command: sh -c "npm run lint && npm run build && npm run check:bundle && npm run test:cov"
+    volumes: [./frontend/src:/app/src]

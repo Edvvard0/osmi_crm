@@ -1,0 +1,35 @@
+# Python / venv (локальные, не коммитятся)
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+.vite/
+coverage/
+playwright-report/
+test-results/
+
+# Окружение и секреты
+.env
+.env.*
+!.env.example
+
+# Локальные данные
+pgdata/
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.pgdev/

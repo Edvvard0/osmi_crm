@@ -1,0 +1,26 @@
+# Dev-окружение: make up
+services:
+  db:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: crm, POSTGRES_PASSWORD: crm, POSTGRES_DB: crm }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U crm"], interval: 5s, timeout: 3s, retries: 10 }
+  api:
+    build: { context: ./backend, target: dev }
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://crm:crm@db:5432/crm
+    volumes: [./backend:/app]
+    depends_on: { db: { condition: service_healthy } }
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --no-server-header"
+  web:
+    build: { context: ./frontend, target: dev }
+    volumes: [./frontend/src:/app/src]
+    depends_on: [api]
+  edge:
+    image: nginx:1.27-alpine
+    ports: ["8080:80"]
+    volumes: [./deploy/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro]
+    depends_on: [api, web]
+volumes:
+  pgdata:

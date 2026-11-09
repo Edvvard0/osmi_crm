@@ -1,0 +1,47 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: crm, POSTGRES_PASSWORD: crm, POSTGRES_DB: crm_test }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U crm" --health-interval 3s --health-retries 10
+    env:
+      ENV: test
+      DATABASE_URL: postgresql+asyncpg://crm:crm@localhost:5432/crm_test
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: mypy app
+      - run: alembic upgrade head
+      - run: pytest --cov --cov-fail-under=85
+      - run: pip-audit
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run check:bundle
+      - run: npm run test:cov
+      - run: npm audit --audit-level=high
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pipx run semgrep --config auto --error .
+      - uses: aquasecurity/trivy-action@0.24.0
+        with: { scan-type: fs, severity: "HIGH,CRITICAL", exit-code: "1" }
+      - run: docker compose -f docker-compose.prod.yml build
+        env: { SECRET_KEY: ci-secret-key-000000000000000000000000, DATABASE_URL: "postgresql+asyncpg://x:x@db/x" }
