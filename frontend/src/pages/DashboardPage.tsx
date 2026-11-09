@@ -1,9 +1,10 @@
 import { useMe } from "@/features/auth/AuthProvider";
 import { useActiveLocation } from "@/features/locations/api";
 import { ROLE_LABELS, type Role } from "@/shared/api/types";
+import { SystemCard } from "@/features/system/SystemCard";
 import { MechanicTasksPage } from "@/features/mechanic/MechanicTasksPage";
 import { ManagerHome } from "@/features/orders/ManagerHome";
-import { Badge } from "@/shared/ui/ui";
+import { DirectorDashboard } from "@/features/reports/DirectorDashboard";
 
 const TITLES: Record<Role, string> = {
   mechanic: "Рабочий стол механика",
@@ -11,7 +12,7 @@ const TITLES: Record<Role, string> = {
   director: "Рабочий стол руководителя",
 };
 
-/** Заглушка рабочего стола роли: наполнение появится в следующих модулях. */
+/** Рабочий стол роли: механик — задачи, менеджер — «Сегодня», директор — дашборд показателей. */
 export function DashboardPage() {
   const me = useMe();
   const { current, value } = useActiveLocation();
@@ -23,12 +24,8 @@ export function DashboardPage() {
         {me.full_name} · {ROLE_LABELS[me.role]}
         {value === "all" ? " · Все точки" : current ? ` · ${current.name}` : ""}
       </p>
-      <p className="mt-4 text-sm text-muted">Разделы появятся в следующих модулях.</p>
-      <div className="mt-4 flex gap-2">
-        <Badge tone="success">Модуль 1</Badge>
-        <Badge>Доступ и точки</Badge>
-      </div>
-      {(me.role === "manager" || me.role === "director") && <ManagerHome />}
+      {me.role === "director" ? <DirectorDashboard /> : <ManagerHome />}
+      {me.role === "director" && <SystemCard />}
     </div>
   );
 }

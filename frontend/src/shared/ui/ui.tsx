@@ -12,30 +12,44 @@ import {
 } from "react";
 import { Link, type LinkProps } from "react-router-dom";
 
+import { useIsOffline } from "@/shared/lib/connectivity";
+
+export const OFFLINE_HINT = "Нет соединения — действие недоступно";
+
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
-export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; loading?: boolean }>(
-  function Button({ variant = "primary", loading, className, children, disabled, ...rest }, ref) {
-    return (
-      <button
-        ref={ref}
-        disabled={disabled || loading}
-        aria-busy={loading || undefined}
-        className={clsx(
-          "inline-flex min-h-10 items-center justify-center gap-2 rounded px-4 text-sm font-medium transition-opacity disabled:opacity-50",
-          variant === "primary" && "bg-accent text-accent-fg hover:opacity-90",
-          variant === "secondary" && "border border-border bg-surface text-fg hover:bg-bg",
-          variant === "ghost" && "text-fg hover:bg-border/50",
-          variant === "danger" && "bg-danger text-white hover:opacity-90",
-          className,
-        )}
-        {...rest}
-      >
-        {children}
-      </button>
-    );
-  },
-);
+export const Button = forwardRef<
+  HTMLButtonElement,
+  ButtonHTMLAttributes<HTMLButtonElement> & {
+    variant?: Variant;
+    loading?: boolean;
+    /** Кнопка не меняет данные (повтор чтения, переход): остаётся доступной офлайн. По умолчанию офлайн блокируются submit и danger. */
+    offlineSafe?: boolean;
+  }
+>(function Button({ variant = "primary", loading, offlineSafe, className, children, disabled, title, ...rest }, ref) {
+  const offline = useIsOffline();
+  // Изменяющие действия офлайн недоступны (контракт модуля 12); сами запросы блокирует api-клиент.
+  const blocked = offline && !offlineSafe && (rest.type === "submit" || variant === "danger");
+  return (
+    <button
+      ref={ref}
+      disabled={disabled || loading || blocked}
+      aria-busy={loading || undefined}
+      title={blocked ? OFFLINE_HINT : title}
+      className={clsx(
+        "inline-flex min-h-11 items-center justify-center gap-2 rounded px-4 text-sm font-medium transition-opacity disabled:opacity-50 md:min-h-10",
+        variant === "primary" && "bg-accent text-accent-fg hover:opacity-90",
+        variant === "secondary" && "border border-border bg-surface text-fg hover:bg-bg",
+        variant === "ghost" && "text-fg hover:bg-border/50",
+        variant === "danger" && "bg-danger text-white hover:opacity-90",
+        className,
+      )}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+});
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string }>(
   function Input({ label, error, id, className, ...rest }, ref) {
@@ -49,7 +63,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
           aria-invalid={!!error}
           aria-describedby={error ? `${inputId}-err` : undefined}
           className={clsx(
-            "min-h-10 w-full rounded border bg-surface px-3 text-fg placeholder:text-muted",
+            "min-h-11 w-full rounded border bg-surface px-3 text-fg placeholder:text-muted md:min-h-10",
             error ? "border-danger" : "border-border",
             className,
           )}
@@ -126,7 +140,7 @@ export function LinkButton({ variant = "primary", className, ...rest }: LinkProp
   return (
     <Link
       className={clsx(
-        "inline-flex min-h-10 items-center justify-center rounded px-4 text-sm font-medium",
+        "inline-flex min-h-11 items-center justify-center rounded px-4 text-sm font-medium md:min-h-10",
         variant === "primary" ? "bg-accent text-accent-fg hover:opacity-90" : "border border-border bg-surface text-fg hover:bg-bg",
         className,
       )}
@@ -145,7 +159,7 @@ export function PasswordInput({ label, error, ...rest }: InputHTMLAttributes<HTM
         onClick={() => setShown((v) => !v)}
         aria-pressed={shown}
         aria-label={shown ? "Скрыть пароль" : "Показать пароль"}
-        className="absolute right-2 top-[1.65rem] rounded px-2 py-1 text-xs text-muted hover:text-fg"
+        className="absolute right-1 top-6 flex h-11 items-center rounded px-3 text-xs text-muted hover:text-fg md:h-10"
       >
         {shown ? "Скрыть" : "Показать"}
       </button>
@@ -161,7 +175,7 @@ export function Select({ label, error, children, className, id, ...rest }: Selec
       <select
         id={selectId}
         aria-invalid={!!error}
-        className={clsx("min-h-10 w-full rounded border bg-surface px-3 text-fg", error ? "border-danger" : "border-border", className)}
+        className={clsx("min-h-11 w-full rounded border bg-surface px-3 text-fg md:min-h-10", error ? "border-danger" : "border-border", className)}
         {...rest}
       >
         {children}
@@ -177,7 +191,7 @@ export function Select({ label, error, children, className, id, ...rest }: Selec
 
 export function Checkbox({ label, ...rest }: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
-    <label className="flex min-h-10 items-center gap-2 text-sm">
+    <label className="flex min-h-11 items-center gap-2 text-sm md:min-h-10">
       <input type="checkbox" className="h-4 w-4" {...rest} />
       <span>{label}</span>
     </label>

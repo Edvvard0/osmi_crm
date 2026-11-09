@@ -17,6 +17,8 @@ let external: Ctx | null = null;
 export const toast = {
   error: (e: unknown) => external?.error(e),
   success: (t: string) => external?.push("success", t),
+  /** Готовый безопасный текст (из словаря/констант) в виде сообщения об ошибке. */
+  errorText: (t: string) => external?.push("error", t),
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {

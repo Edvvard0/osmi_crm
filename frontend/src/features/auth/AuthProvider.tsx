@@ -4,6 +4,7 @@ import { type ReactNode, createContext, useCallback, useContext, useEffect, useM
 import { api, refreshSession, setAccessToken, setAuthLostHandler } from "@/shared/api/client";
 import type { Session, User } from "@/shared/api/types";
 import { readPref, writePref } from "@/shared/lib/storage";
+import { clearCacheOnLogout, ensureCacheOwner } from "@/shared/pwa/cache";
 
 type Status = "loading" | "authed" | "anon";
 
@@ -32,7 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Bootstrap: access-токен живёт только в памяти, поэтому при загрузке получаем его по refresh-cookie.
   useEffect(() => {
     let alive = true;
-    void refreshSession().then((s) => {
+    void refreshSession().then(async (s) => {
+      // Кэш чтений другого пользователя удаляем до первого запроса экранов.
+      if (s?.user) await ensureCacheOwner(s.user.id);
       if (!alive) return;
       setUser(s?.user ?? null);
       setStatus(s ? "authed" : "anon");
@@ -49,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus("anon");
       setExpired(true);
       qc.clear();
+      void clearCacheOnLogout();
     });
     return () => setAuthLostHandler(null);
   }, [qc]);
@@ -56,6 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (loginName: string, password: string) => {
       const s = await api<Session>("/auth/login", { body: { login: loginName, password } });
+      // До первого запроса под новым пользователем: ключ кэша — полный URL, чужие ответы отдавать нельзя.
+      await ensureCacheOwner(s.user.id);
       setAccessToken(s.access_token);
       qc.clear();
       setExpired(false);
@@ -67,10 +73,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await api("/auth/logout", { method: "POST", skipAuthRetry: true });
+      await api("/auth/logout", { method: "POST", skipAuthRetry: true, allowOffline: true });
     } catch {
       /* выходим локально в любом случае */
     }
+    await clearCacheOnLogout();
     setAccessToken(null);
     qc.clear();
     setExpired(false);

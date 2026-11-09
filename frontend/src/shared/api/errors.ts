@@ -16,6 +16,8 @@ const BASE_ERROR_MESSAGES: Record<string, string> = {
   rate_limited: "Слишком много попыток. Повторите позже",
   internal_error: "Что-то пошло не так. Мы уже знаем о проблеме",
   network_error: "Нет соединения с сервером",
+  offline: "Нет соединения — действие недоступно",
+  service_unavailable: "Сервис временно недоступен. Попробуйте позже",
   timeout: "Сервер долго не отвечает. Попробуйте ещё раз",
   unknown: "Не удалось выполнить действие",
   invalid_credentials: "Неверный логин или пароль",
@@ -151,6 +153,7 @@ export function messageFor(code: string): string {
 
 export function codeForStatus(status: number): string {
   if (STATUS_CODES[status]) return STATUS_CODES[status];
+  if (status === 502 || status === 503 || status === 504) return "service_unavailable";
   return status >= 500 ? "internal_error" : "unknown";
 }
 

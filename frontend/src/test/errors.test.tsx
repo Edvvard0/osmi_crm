@@ -31,7 +31,7 @@ describe("API client: сообщение для каждого HTTP-кода", (
   const cases: [number, string][] = [
     [400, "bad_request"], [401, "unauthorized"], [403, "forbidden"], [404, "not_found"],
     [409, "conflict"], [413, "payload_too_large"], [422, "validation_error"],
-    [429, "rate_limited"], [500, "internal_error"], [502, "internal_error"], [503, "internal_error"],
+    [429, "rate_limited"], [500, "internal_error"], [502, "service_unavailable"], [503, "service_unavailable"], [504, "service_unavailable"],
   ];
   it.each(cases)("%i → %s", async (status, code) => {
     mockFetch(status, { error: { message: SECRET } });
@@ -137,10 +137,10 @@ describe("маршруты и офлайн", () => {
     act(() => {
       window.dispatchEvent(new Event("offline"));
     });
-    expect(screen.getByText("Нет соединения с сервером")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/^Нет соединения/);
     act(() => {
       window.dispatchEvent(new Event("online"));
     });
-    expect(screen.queryByText("Нет соединения с сервером")).toBeNull();
+    await waitFor(() => expect(screen.queryByText(/^Нет соединения/)).toBeNull());
   });
 });

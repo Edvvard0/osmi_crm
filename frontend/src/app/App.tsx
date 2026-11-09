@@ -5,22 +5,12 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import type { ReactNode } from "react";
 
 import type { Role } from "@/shared/api/types";
-import { ErrorPage, NotFoundPage } from "@/pages/ErrorPage";
+import { NotFoundPage } from "@/pages/ErrorPage";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { RequireAuth, RequireRole } from "@/features/auth/guards";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { LoginPage } from "@/pages/LoginPage";
-import { SettingsPage } from "@/pages/SettingsPage";
-import { CatalogPage } from "@/pages/catalog/CatalogPage";
-import { ClientFormPage } from "@/pages/clients/ClientFormPage";
-import { ClientPage } from "@/pages/clients/ClientPage";
-import { ClientsPage } from "@/pages/clients/ClientsPage";
-import { VehicleEditPage, VehicleNewPage } from "@/pages/clients/VehicleFormPage";
-import { VehiclePage } from "@/pages/clients/VehiclePage";
-import { LocationPage } from "@/pages/locations/LocationPage";
-import { LocationsPage } from "@/pages/locations/LocationsPage";
-import { UserPage } from "@/pages/users/UserPage";
-import { UsersPage } from "@/pages/users/UsersPage";
+import { onRecover } from "@/shared/lib/connectivity";
 import { ToastProvider } from "@/shared/ui/toast";
 import { Loading } from "@/shared/ui/ui";
 
@@ -28,6 +18,21 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { Layout } from "./Layout";
 import { installGlobalHandlers } from "./globalHandlers";
 import { createQueryClient } from "./queryClient";
+
+// Экраны грузятся по требованию (React.lazy): начальный бандл — только оболочка, вход и рабочий стол.
+// Suspense даёт Layout вокруг Outlet.
+const SettingsPage = lazy(() => import("@/pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const CatalogPage = lazy(() => import("@/pages/catalog/CatalogPage").then((m) => ({ default: m.CatalogPage })));
+const ClientFormPage = lazy(() => import("@/pages/clients/ClientFormPage").then((m) => ({ default: m.ClientFormPage })));
+const ClientPage = lazy(() => import("@/pages/clients/ClientPage").then((m) => ({ default: m.ClientPage })));
+const ClientsPage = lazy(() => import("@/pages/clients/ClientsPage").then((m) => ({ default: m.ClientsPage })));
+const VehiclePage = lazy(() => import("@/pages/clients/VehiclePage").then((m) => ({ default: m.VehiclePage })));
+const LocationPage = lazy(() => import("@/pages/locations/LocationPage").then((m) => ({ default: m.LocationPage })));
+const LocationsPage = lazy(() => import("@/pages/locations/LocationsPage").then((m) => ({ default: m.LocationsPage })));
+const UserPage = lazy(() => import("@/pages/users/UserPage").then((m) => ({ default: m.UserPage })));
+const UsersPage = lazy(() => import("@/pages/users/UsersPage").then((m) => ({ default: m.UsersPage })));
+const VehicleEditPage = lazy(() => import("@/pages/clients/VehicleFormPage").then((m) => ({ default: m.VehicleEditPage })));
+const VehicleNewPage = lazy(() => import("@/pages/clients/VehicleFormPage").then((m) => ({ default: m.VehicleNewPage })));
 
 // Календарь тяжёлый (сетка, перетаскивание) — грузится отдельным чанком только при заходе на /calendar.
 const CalendarPage = lazy(() => import("@/pages/calendar/CalendarPage").then((m) => ({ default: m.CalendarPage })));
@@ -47,8 +52,10 @@ const routeGroups = [...routeGroupMap];
 export function App() {
   const [qc] = useState(createQueryClient);
   useEffect(() => installGlobalHandlers(), []);
+  // Связь восстановилась — перезапрашиваем активные данные (вместо показанных из офлайн-кэша).
+  useEffect(() => onRecover(() => void qc.invalidateQueries()), [qc]);
   return (
-    <ErrorBoundary fallback={(reset) => <ErrorPage onRetry={reset} />}>
+    <ErrorBoundary>
       <QueryClientProvider client={qc}>
         <ToastProvider>
           <AuthProvider>

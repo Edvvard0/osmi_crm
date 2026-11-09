@@ -1,14 +1,16 @@
 import clsx from "clsx";
-import { NavLink, Outlet } from "react-router-dom";
+import { Suspense } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useMe, useAuth } from "@/features/auth/AuthProvider";
 import { useActiveLocation } from "@/features/locations/api";
 import { GlobalSearch } from "@/features/search/CommandPalette";
 import type { Role } from "@/shared/api/types";
-import { Button } from "@/shared/ui/ui";
+import { Button, Loading } from "@/shared/ui/ui";
 
 import { ErrorBoundary } from "./ErrorBoundary";
 import { OfflineBanner } from "./OfflineBanner";
+import { UpdatePrompt } from "./UpdatePrompt";
 
 interface NavItem { to: string; label: string; roles: Role[]; order?: number }
 
@@ -33,7 +35,7 @@ const ALL_NAV: NavItem[] = [...NAV.map((n, i) => ({ ...n, order: (i + 1) * 10 })
 );
 
 const linkCls = ({ isActive }: { isActive: boolean }) =>
-  clsx("flex-1 whitespace-nowrap rounded px-3 py-2 text-center text-sm md:flex-none md:text-left", isActive ? "bg-accent text-accent-fg" : "text-muted hover:bg-border/50");
+  clsx("flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded px-3 py-2 text-center text-sm md:min-h-0 md:flex-none md:justify-start md:text-left", isActive ? "bg-accent text-accent-fg" : "text-muted hover:bg-border/50");
 
 function LocationSwitcher() {
   const { items, value, set, isDirector } = useActiveLocation();
@@ -45,7 +47,7 @@ function LocationSwitcher() {
       aria-label="Точка"
       value={value}
       onChange={(e) => set(e.target.value)}
-      className="min-h-9 max-w-[50vw] rounded border border-border bg-surface px-2 text-sm text-fg"
+      className="min-h-11 max-w-[50vw] md:min-h-9 rounded border border-border bg-surface px-2 text-sm text-fg"
     >
       {isDirector && <option value="all">Все точки</option>}
       {items.map((l) => (
@@ -59,6 +61,7 @@ export function Layout() {
   const me = useMe();
   const { logout } = useAuth();
   const nav = ALL_NAV.filter((n) => n.roles.includes(me.role));
+  const { pathname } = useLocation();
   return (
     <div className="flex h-full flex-col md:flex-row">
       {/* Desktop: сайдбар */}
@@ -80,9 +83,13 @@ export function Layout() {
           </div>
         </header>
         <OfflineBanner />
+        <UpdatePrompt />
         <main className="flex-1 overflow-y-auto p-4 pb-20 md:p-6 md:pb-6">
-          <ErrorBoundary>
-            <Outlet />
+          {/* C-06: ошибка экрана не ломает меню; при переходе на другой экран сбрасывается. */}
+          <ErrorBoundary resetKey={pathname}>
+            <Suspense fallback={<Loading />}>
+              <Outlet />
+            </Suspense>
           </ErrorBoundary>
         </main>
       </div>

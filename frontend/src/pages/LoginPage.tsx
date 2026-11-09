@@ -3,6 +3,8 @@ import { Navigate, useLocation } from "react-router-dom";
 
 import { useAuth } from "@/features/auth/AuthProvider";
 import { Splash } from "@/features/auth/guards";
+import { OfflineBanner } from "@/app/OfflineBanner";
+import { UpdatePrompt } from "@/app/UpdatePrompt";
 import { toAppError } from "@/shared/api/errors";
 import { Alert, Button, Input, PasswordInput } from "@/shared/ui/ui";
 
@@ -35,7 +37,10 @@ export function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-full place-items-center p-4">
+    <div className="flex min-h-full flex-col">
+    <OfflineBanner />
+    <UpdatePrompt />
+    <main className="grid flex-1 place-items-center p-4">
       <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-lg border border-border bg-surface p-6" noValidate>
         <h1 className="text-xl font-semibold">CRM Автосервис</h1>
         {expired && !error && (
@@ -52,5 +57,6 @@ export function LoginPage() {
         <p className="text-xs text-muted">Забыли пароль? Обратитесь к руководителю — он задаст новый.</p>
       </form>
     </main>
+    </div>
   );
 }

@@ -1,3 +1,6 @@
+import { FROM_CACHE_HEADER } from "@/shared/lib/apiCachePolicy";
+import { getConnectivity, isOffline, probeConnection, reportData, reportNetworkError, reportReachable } from "@/shared/lib/connectivity";
+
 import { AppError, codeForStatus } from "./errors";
 import type { Session } from "./types";
 
@@ -21,12 +24,14 @@ export function refreshSession(): Promise<Session | null> {
   const p = (async () => {
     try {
       const r = await fetch(`${BASE}/auth/refresh`, { method: "POST", credentials: "include" });
+      reportReachable();
       if (!r.ok) return null;
       const data = (await r.json()) as Partial<Session>;
       if (typeof data.access_token !== "string" || !data.access_token) return null;
       accessToken = data.access_token;
       return data as Session;
     } catch {
+      reportNetworkError();
       return null;
     }
   })();
@@ -67,9 +72,20 @@ export interface RequestOptions {
   skipAuthRetry?: boolean;
   /** Ответ — бинарное тело (PDF): возвращается Blob, а не JSON. */
   blob?: boolean;
+  /** Изменяющий запрос, который нужно отправить даже без сети (выход из системы). */
+  allowOffline?: boolean;
 }
 
 export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+  const method = (opts.method ?? (opts.body ? "POST" : "GET")).toUpperCase();
+  const isRead = method === "GET";
+  // Мутации офлайн заблокированы централизованно: очереди отложенных действий нет.
+  if (!isRead && !opts.allowOffline) {
+    const c = getConnectivity();
+    // Браузер считает, что сеть есть, но недавний запрос упал — проверяем связь перед отправкой.
+    if (c.browserOnline && c.netFailed) await probeConnection();
+    if (isOffline()) throw new AppError("offline");
+  }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   opts.signal?.addEventListener("abort", () => ctrl.abort());
@@ -77,7 +93,7 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
   let res: Response;
   try {
     res = await fetch(`${BASE}${path}`, {
-      method: opts.method ?? (opts.body ? "POST" : "GET"),
+      method,
       credentials: "include",
       signal: ctrl.signal,
       headers: {
@@ -87,10 +103,17 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
       body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
   } catch (e) {
-    throw new AppError((e as Error)?.name === "AbortError" ? "timeout" : "network_error");
+    if ((e as Error)?.name === "AbortError") throw new AppError("timeout");
+    reportNetworkError();
+    throw new AppError("network_error");
   } finally {
     clearTimeout(timer);
   }
+
+  // Любой HTTP-ответ — сервер достижим. Ответ из офлайн-кэша service worker помечен заголовком.
+  const fromCache = res.headers.get(FROM_CACHE_HEADER) === "1";
+  if (isRead && res.ok) reportData(path, res.headers.get("Date"), fromCache);
+  else if (!fromCache) reportReachable();
 
   if (res.status === 401 && !opts.skipAuthRetry && path !== "/auth/login" && path !== "/auth/refresh") {
     if (accessToken !== usedToken) {
