@@ -2,6 +2,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
+import type { ReactNode } from "react";
+
+import type { Role } from "@/shared/api/types";
 import { ErrorPage, NotFoundPage } from "@/pages/ErrorPage";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { RequireAuth, RequireRole } from "@/features/auth/guards";
@@ -28,6 +31,18 @@ import { createQueryClient } from "./queryClient";
 
 // Календарь тяжёлый (сетка, перетаскивание) — грузится отдельным чанком только при заходе на /calendar.
 const CalendarPage = lazy(() => import("@/pages/calendar/CalendarPage").then((m) => ({ default: m.CalendarPage })));
+
+// Маршруты модулей: features/<имя>/routes.tsx экспортирует `routes: FeatureRoute[]`.
+export interface FeatureRoute { path: string; roles: Role[]; element: ReactNode }
+const featureRoutes = Object.values(
+  import.meta.glob<{ routes: FeatureRoute[] }>("../features/*/routes.tsx", { eager: true }),
+).flatMap((m) => m.routes);
+const routeGroupMap = new Map<string, FeatureRoute[]>();
+for (const r of featureRoutes) {
+  const key = [...r.roles].sort().join(",");
+  routeGroupMap.set(key, [...(routeGroupMap.get(key) ?? []), r]);
+}
+const routeGroups = [...routeGroupMap];
 
 export function App() {
   const [qc] = useState(createQueryClient);
@@ -70,6 +85,13 @@ export function App() {
                       <Route path="locations" element={<LocationsPage />} />
                       <Route path="locations/:id" element={<LocationPage />} />
                     </Route>
+                    {routeGroups.map(([key, group]) => (
+                      <Route key={key} element={<RequireRole roles={group[0].roles} />}>
+                        {group.map((r) => (
+                          <Route key={r.path} path={r.path} element={r.element} />
+                        ))}
+                      </Route>
+                    ))}
                     <Route path="*" element={<NotFoundPage />} />
                   </Route>
                 </Route>

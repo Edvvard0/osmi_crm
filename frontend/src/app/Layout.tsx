@@ -10,7 +10,12 @@ import { Button } from "@/shared/ui/ui";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { OfflineBanner } from "./OfflineBanner";
 
-interface NavItem { to: string; label: string; roles: Role[] }
+interface NavItem { to: string; label: string; roles: Role[]; order?: number }
+
+// Пункты меню модулей: features/<имя>/nav.ts экспортирует `nav: NavItem[]` (order — позиция в меню).
+const featureNav = Object.values(
+  import.meta.glob<{ nav: NavItem[] }>("../features/*/nav.ts", { eager: true }),
+).flatMap((m) => m.nav);
 
 const NAV: NavItem[] = [
   { to: "/", label: "Рабочий стол", roles: ["mechanic", "manager", "director"] },
@@ -22,6 +27,10 @@ const NAV: NavItem[] = [
   { to: "/locations", label: "Точки", roles: ["director"] },
   { to: "/settings", label: "Настройки", roles: ["mechanic", "manager", "director"] },
 ];
+
+const ALL_NAV: NavItem[] = [...NAV.map((n, i) => ({ ...n, order: (i + 1) * 10 })), ...featureNav].sort(
+  (a, b) => (a.order ?? 1000) - (b.order ?? 1000),
+);
 
 const linkCls = ({ isActive }: { isActive: boolean }) =>
   clsx("flex-1 whitespace-nowrap rounded px-3 py-2 text-center text-sm md:flex-none md:text-left", isActive ? "bg-accent text-accent-fg" : "text-muted hover:bg-border/50");
@@ -49,7 +58,7 @@ function LocationSwitcher() {
 export function Layout() {
   const me = useMe();
   const { logout } = useAuth();
-  const nav = NAV.filter((n) => n.roles.includes(me.role));
+  const nav = ALL_NAV.filter((n) => n.roles.includes(me.role));
   return (
     <div className="flex h-full flex-col md:flex-row">
       {/* Desktop: сайдбар */}

@@ -1,6 +1,6 @@
 /** Клиент видит только безопасные сообщения из словаря — текст ошибки сервера в UI не попадает. */
 
-export const ERROR_MESSAGES: Record<string, string> = {
+const BASE_ERROR_MESSAGES: Record<string, string> = {
   bad_request: "Некорректный запрос",
   unauthorized: "Сессия истекла. Войдите снова",
   forbidden: "Нет доступа к этому разделу",
@@ -38,7 +38,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
 };
 
 /** Подписи ошибок полей: сервер присылает код или свой текст — на экран идёт только то, что есть в словаре. */
-export const FIELD_MESSAGES: Record<string, string> = {
+const BASE_FIELD_MESSAGES: Record<string, string> = {
   required: "Обязательное поле",
   invalid: "Некорректное значение",
   weak_password: "Слишком простой пароль",
@@ -46,7 +46,7 @@ export const FIELD_MESSAGES: Record<string, string> = {
   unique_violation: "Такое значение уже используется",
 };
 
-const FIELD_FALLBACKS: Record<string, string> = {
+const BASE_FIELD_FALLBACKS: Record<string, string> = {
   new_password: "Пароль слишком простой: не короче 10 символов, не должен совпадать с логином",
   current_password: "Проверьте текущий пароль",
   login: "Недопустимый логин",
@@ -91,6 +91,25 @@ const FIELD_FALLBACKS: Record<string, string> = {
   comment: "Недопустимый комментарий",
   password: "Пароль слишком простой: не короче 10 символов, не должен совпадать с логином",
 };
+
+/**
+ * Реестр сообщений модулей: каждый модуль кладёт свои тексты в features/<имя>/errors.ts
+ * (экспорты errorMessages, fieldMessages, fieldFallbacks) — общий файл править не нужно.
+ */
+interface FeatureMessages {
+  errorMessages?: Record<string, string>;
+  fieldMessages?: Record<string, string>;
+  fieldFallbacks?: Record<string, string>;
+}
+const featureMessages = Object.values(
+  import.meta.glob<FeatureMessages>("../../features/*/errors.ts", { eager: true }),
+);
+const merge = (base: Record<string, string>, pick: (m: FeatureMessages) => Record<string, string> | undefined) =>
+  Object.assign({}, base, ...featureMessages.map((m) => pick(m) ?? {})) as Record<string, string>;
+
+export const ERROR_MESSAGES = merge(BASE_ERROR_MESSAGES, (m) => m.errorMessages);
+export const FIELD_MESSAGES = merge(BASE_FIELD_MESSAGES, (m) => m.fieldMessages);
+const FIELD_FALLBACKS = merge(BASE_FIELD_FALLBACKS, (m) => m.fieldFallbacks);
 
 const STATUS_CODES: Record<number, string> = {
   400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found",
