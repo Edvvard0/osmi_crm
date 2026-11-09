@@ -1,4 +1,8 @@
+import importlib
+import pkgutil
+
 from app.models.audit import AuditLog
+from app.models.catalog import Part, Service, ServiceCategory, ServiceLocationPrice, WorkPost
 from app.models.client import Client, Vehicle
 from app.models.enums import Role
 from app.models.location import Location
@@ -8,9 +12,19 @@ __all__ = [
     "AuditLog",
     "Client",
     "Location",
+    "Part",
     "RefreshSession",
     "Role",
+    "Service",
+    "ServiceCategory",
+    "ServiceLocationPrice",
     "User",
     "UserLocation",
     "Vehicle",
+    "WorkPost",
 ]
+
+
+# Авто-регистрация моделей: новый файл в app/models подхватывается без правки этого модуля.
+for _info in pkgutil.iter_modules(__path__):
+    importlib.import_module(f"{__name__}.{_info.name}")

@@ -38,6 +38,11 @@ def _ilike(column: InstrumentedAttribute[str | None], value: str) -> ColumnEleme
     return _fold(column).ilike(_pattern(value.lower()), escape="\\")
 
 
+def contains(column: InstrumentedAttribute[str | None], value: str) -> ColumnElement[bool]:
+    """Подстрока без учёта регистра (в т.ч. кириллицы); % и _ в запросе — обычные символы."""
+    return _ilike(column, value)
+
+
 def phone_digits(term: str) -> str | None:
     """Если запрос похож на телефон — только цифры (8XXXXXXXXXX → 7XXXXXXXXXX), иначе None."""
     if not _PHONE_LIKE.fullmatch(term):

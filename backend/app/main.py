@@ -1,9 +1,11 @@
+import importlib
+import pkgutil
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.v1 import auth, client_errors, clients, health, locations, search, users, vehicles
+import app.api.v1 as api_v1
 from app.core.config import get_settings
 from app.core.db import dispose_engine
 from app.core.errors import register_error_handlers
@@ -15,6 +17,18 @@ from app.core.middleware import RequestContextMiddleware
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
     await dispose_engine()
+
+
+def _include_routers(app: FastAPI) -> None:
+    """Подключает `router` из каждого модуля пакета app.api.v1 (по алфавиту).
+
+    Новый модуль достаточно положить файлом в app/api/v1 — main.py не меняется.
+    """
+    for info in sorted(pkgutil.iter_modules(api_v1.__path__), key=lambda i: i.name):
+        module = importlib.import_module(f"{api_v1.__name__}.{info.name}")
+        router = getattr(module, "router", None)
+        if router is not None:
+            app.include_router(router, prefix="/api/v1")
 
 
 def create_app() -> FastAPI:
@@ -30,14 +44,7 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(RequestContextMiddleware)
     register_error_handlers(app)
-    app.include_router(health.router, prefix="/api/v1")
-    app.include_router(client_errors.router, prefix="/api/v1")
-    app.include_router(auth.router, prefix="/api/v1")
-    app.include_router(locations.router, prefix="/api/v1")
-    app.include_router(users.router, prefix="/api/v1")
-    app.include_router(clients.router, prefix="/api/v1")
-    app.include_router(vehicles.router, prefix="/api/v1")
-    app.include_router(search.router, prefix="/api/v1")
+    _include_routers(app)
     return app
 
 
