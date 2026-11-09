@@ -161,6 +161,7 @@ services:
       - ./deploy/nginx/nginx.prod.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ./deploy/nginx/snippets:/etc/nginx/snippets:ro
       - ./frontend/public/offline.html:/usr/share/nginx/offline/offline.html:ro
+      - ./frontend/public/offline.css:/usr/share/nginx/offline/offline.css:ro
       - letsencrypt:/etc/letsencrypt:ro
       - acme:/var/www/certbot:ro
     # nginx стартует от root (привязка к 80/443, затем сброс до пользователя nginx)

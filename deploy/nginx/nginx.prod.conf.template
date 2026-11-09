@@ -131,6 +131,7 @@ server {
   # ----- Служебные ответы -----
   location @offline {
     root /usr/share/nginx/offline;
+    rewrite ^/offline\.css$ /offline.css break;
     rewrite ^ /offline.html break;
     include /etc/nginx/snippets/security-headers.conf;
     add_header Cache-Control "no-store" always;
