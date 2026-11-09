@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 248 249 250;
+  --surface: 255 255 255;
+  --border: 226 229 233;
+  --fg: 17 24 39;
+  --muted: 107 114 128;
+  --accent: 17 24 39;
+  --accent-fg: 255 255 255;
+  --success: 22 128 60;
+  --warning: 180 83 9;
+  --danger: 185 28 28;
+}
+:root[data-theme="dark"] {
+  --bg: 15 17 21;
+  --surface: 24 27 33;
+  --border: 42 46 54;
+  --fg: 243 244 246;
+  --muted: 156 163 175;
+  --accent: 243 244 246;
+  --accent-fg: 17 24 39;
+  --success: 74 222 128;
+  --warning: 251 191 36;
+  --danger: 248 113 113;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: 15 17 21; --surface: 24 27 33; --border: 42 46 54; --fg: 243 244 246;
+    --muted: 156 163 175; --accent: 243 244 246; --accent-fg: 17 24 39;
+    --success: 74 222 128; --warning: 251 191 36; --danger: 248 113 113;
+  }
+}
+
+html, body, #root { height: 100%; }
+body { @apply bg-bg font-sans text-fg antialiased; padding: env(safe-area-inset-top) 0 0; }
+:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
