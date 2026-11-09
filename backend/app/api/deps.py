@@ -48,6 +48,8 @@ def require_role(*roles: Role) -> Callable[..., Awaitable[User]]:
 
 
 Director = Annotated[User, Depends(require_role(Role.director))]
+# Клиенты и автомобили: менеджер и руководитель (механик — 403 до модуля 6).
+Staff = Annotated[User, Depends(require_role(Role.manager, Role.director))]
 
 
 async def get_allowed_location_ids(user: CurrentUser, session: SessionDep) -> list[uuid.UUID]:

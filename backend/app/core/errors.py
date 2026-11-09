@@ -43,26 +43,42 @@ MESSAGES = {
     "account_locked": "Учётная запись временно заблокирована. Повторите попытку позже",
     "invalid_token": "Сессия недействительна, войдите заново",
     "invalid_current_password": "Неверный текущий пароль",
+    "duplicate_phone": "Клиент с таким телефоном уже существует",
+    "duplicate_vin": "Автомобиль с таким VIN уже существует",
+    "client_archived": "Клиент в архиве",
 }
 
 
 class AppError(Exception):
-    def __init__(self, status: int, code: str, fields: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        status: int,
+        code: str,
+        fields: dict[str, str] | None = None,
+        details: dict[str, str] | None = None,
+    ) -> None:
         self.status, self.code, self.fields = status, code, fields or {}
+        self.details = details
 
 
 def error_response(
-    status: int, code: str, request: Request, fields: dict[str, str] | None = None
+    status: int,
+    code: str,
+    request: Request,
+    fields: dict[str, str] | None = None,
+    details: dict[str, str] | None = None,
 ) -> JSONResponse:
     rid = getattr(request.state, "request_id", None)
-    body = {
-        "error": {
-            "code": code,
-            "message": MESSAGES.get(code, MESSAGES["internal_error"]),
-            "fields": fields or {},
-            "request_id": rid,
-        }
+    error: dict[str, object] = {
+        "code": code,
+        "message": MESSAGES.get(code, MESSAGES["internal_error"]),
+        "fields": fields or {},
+        "request_id": rid,
     }
+    if details:
+        # Только безопасные идентификаторы/имя существующей записи (без SQL и внутренних деталей).
+        error["details"] = details
+    body = {"error": error}
     resp = JSONResponse(body, status_code=status)
     if rid:
         resp.headers["X-Request-ID"] = rid
@@ -72,7 +88,7 @@ def error_response(
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _app(request: Request, exc: AppError) -> JSONResponse:
-        return error_response(exc.status, exc.code, request, exc.fields)
+        return error_response(exc.status, exc.code, request, exc.fields, exc.details)
 
     @app.exception_handler(StarletteHTTPException)
     async def _http(request: Request, exc: StarletteHTTPException) -> JSONResponse:

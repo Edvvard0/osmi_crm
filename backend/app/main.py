@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.v1 import auth, client_errors, health, locations, users
+from app.api.v1 import auth, client_errors, clients, health, locations, search, users, vehicles
 from app.core.config import get_settings
 from app.core.db import dispose_engine
 from app.core.errors import register_error_handlers
@@ -35,6 +35,9 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(locations.router, prefix="/api/v1")
     app.include_router(users.router, prefix="/api/v1")
+    app.include_router(clients.router, prefix="/api/v1")
+    app.include_router(vehicles.router, prefix="/api/v1")
+    app.include_router(search.router, prefix="/api/v1")
     return app
 
 
