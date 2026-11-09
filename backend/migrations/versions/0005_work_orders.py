@@ -7,7 +7,7 @@ Revises: 0004
 from alembic import op  # noqa: F401
 
 revision = "0005"
-down_revision = "0004"
+down_revision = "0004a"
 branch_labels = None
 depends_on = None
 

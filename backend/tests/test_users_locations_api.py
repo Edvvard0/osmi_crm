@@ -383,7 +383,9 @@ async def test_location_create_read_update(api, db, director):
     )
     assert r.status_code == 201, r.text
     loc = r.json()
-    assert set(loc) == {"id", "name", "address", "phone", "is_active"}
+    assert set(loc) == {
+        "id", "name", "address", "phone", "is_active", "code", "timezone", "work_start", "work_end",
+    }  # fmt: skip
     assert loc["phone"] == "+79991234567" and loc["is_active"] is True
 
     r = await api.get(f"{API}/locations/{loc['id']}", headers=h)
