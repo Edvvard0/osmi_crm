@@ -14,6 +14,7 @@ interface NavItem { to: string; label: string; roles: Role[] }
 
 const NAV: NavItem[] = [
   { to: "/", label: "Рабочий стол", roles: ["mechanic", "manager", "director"] },
+  { to: "/calendar", label: "Календарь", roles: ["manager", "director"] },
   { to: "/clients", label: "Клиенты", roles: ["manager", "director"] },
   { to: "/catalog", label: "Каталог и цены", roles: ["director"] },
   { to: "/catalog", label: "Каталог", roles: ["manager"] },

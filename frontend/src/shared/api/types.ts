@@ -22,6 +22,12 @@ export interface CrmLocation {
   address: string;
   phone: string | null;
   is_active: boolean;
+  code: string;
+  /** IANA-пояс точки, например Europe/Moscow. */
+  timezone: string;
+  /** Рабочие часы точки: "HH:MM". */
+  work_start: string;
+  work_end: string;
 }
 
 export interface Page<T> {
@@ -163,4 +169,36 @@ export interface Part {
   department: PartDepartment;
   sale_price: string;
   is_active: boolean;
+}
+
+/* ===== Модуль 4: записи (календарь). Время — ISO 8601 со смещением пояса точки. ===== */
+
+export type AppointmentStatus = "scheduled" | "confirmed" | "arrived" | "no_show" | "cancelled";
+export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
+  scheduled: "Запланирована",
+  confirmed: "Подтверждена",
+  arrived: "Клиент приехал",
+  no_show: "Не приехал",
+  cancelled: "Отменена",
+};
+
+export interface Appointment {
+  id: string;
+  location_id: string;
+  client_id: string;
+  vehicle_id: string;
+  post_id: string | null;
+  department: Department;
+  start_at: string;
+  end_at: string;
+  status: AppointmentStatus;
+  comment: string | null;
+  service_ids: string[];
+  services: { id: string; name: string }[];
+  client: { id: string; full_name: string; phone: string };
+  vehicle: { id: string; make: string; model: string; plate_number: string | null };
+  work_order_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 }

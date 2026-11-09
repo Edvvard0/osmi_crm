@@ -44,8 +44,8 @@ export function mockApi(routes: Record<string, Handler>) {
 export const calls = (f: ReturnType<typeof mockApi>, key: string) =>
   f.mock.calls.filter(([i, init]) => `${(init?.method ?? "GET").toUpperCase()} ${String(i).replace(/^\/api\/v1/, "").split("?")[0]}` === key);
 
-export const LOC1: CrmLocation = { id: "l1", name: "Москва-1", address: "ул. Тестовая, 1", phone: null, is_active: true };
-export const LOC2: CrmLocation = { id: "l2", name: "Москва-2", address: "ул. Другая, 2", phone: "+7 900 000-00-00", is_active: true };
+export const LOC1: CrmLocation = { id: "l1", name: "Москва-1", address: "ул. Тестовая, 1", phone: null, is_active: true, code: "MSK1", timezone: "Europe/Moscow", work_start: "09:00", work_end: "21:00" };
+export const LOC2: CrmLocation = { id: "l2", name: "Москва-2", address: "ул. Другая, 2", phone: "+7 900 000-00-00", is_active: true, code: "MSK2", timezone: "Europe/Moscow", work_start: "09:00", work_end: "21:00" };
 
 export function makeUser(role: Role, over: Partial<User> = {}): User {
   return {

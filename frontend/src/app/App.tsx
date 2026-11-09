@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import { ErrorPage, NotFoundPage } from "@/pages/ErrorPage";
@@ -19,11 +19,15 @@ import { LocationsPage } from "@/pages/locations/LocationsPage";
 import { UserPage } from "@/pages/users/UserPage";
 import { UsersPage } from "@/pages/users/UsersPage";
 import { ToastProvider } from "@/shared/ui/toast";
+import { Loading } from "@/shared/ui/ui";
 
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Layout } from "./Layout";
 import { installGlobalHandlers } from "./globalHandlers";
 import { createQueryClient } from "./queryClient";
+
+// Календарь тяжёлый (сетка, перетаскивание) — грузится отдельным чанком только при заходе на /calendar.
+const CalendarPage = lazy(() => import("@/pages/calendar/CalendarPage").then((m) => ({ default: m.CalendarPage })));
 
 export function App() {
   const [qc] = useState(createQueryClient);
@@ -51,6 +55,14 @@ export function App() {
                     </Route>
                     <Route element={<RequireRole roles={["manager", "director"]} />}>
                       <Route path="catalog" element={<CatalogPage />} />
+                      <Route
+                        path="calendar"
+                        element={
+                          <Suspense fallback={<Loading />}>
+                            <CalendarPage />
+                          </Suspense>
+                        }
+                      />
                     </Route>
                     <Route element={<RequireRole roles={["director"]} />}>
                       <Route path="users" element={<UsersPage />} />

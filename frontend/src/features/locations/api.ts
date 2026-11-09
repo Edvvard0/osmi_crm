@@ -22,6 +22,9 @@ export interface LocationInput {
   address: string;
   phone?: string | null;
   is_active?: boolean;
+  timezone?: string;
+  work_start?: string;
+  work_end?: string;
 }
 
 export function useCreateLocation() {
