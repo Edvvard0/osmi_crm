@@ -11,9 +11,9 @@ router = APIRouter(prefix="/locations", tags=["locations"])
 
 @router.get("", response_model=list[LocationRead])
 async def list_locations(
-    _: CurrentUser, session: SessionDep, allowed: AllowedLocations
+    user: CurrentUser, session: SessionDep, allowed: AllowedLocations
 ) -> list[LocationRead]:
-    return await svc.list_locations(session, allowed)
+    return await svc.list_locations(session, allowed, user)
 
 
 @router.post("", response_model=LocationRead, status_code=201)
@@ -25,9 +25,9 @@ async def create_location(
 
 @router.get("/{location_id}", response_model=LocationRead)
 async def get_location(
-    location_id: uuid.UUID, _: CurrentUser, session: SessionDep, allowed: AllowedLocations
+    location_id: uuid.UUID, user: CurrentUser, session: SessionDep, allowed: AllowedLocations
 ) -> LocationRead:
-    return svc.to_read(await svc.get_location(session, location_id, allowed))
+    return svc.to_read(await svc.get_location(session, location_id, allowed), user)
 
 
 @router.patch("/{location_id}", response_model=LocationRead)

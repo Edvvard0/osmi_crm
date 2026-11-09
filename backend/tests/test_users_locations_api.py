@@ -49,7 +49,10 @@ async def test_create_user_and_login_as_him(api, db, director):
     u = r.json()
     assert u["login"] == "ivan.petrov" and u["role"] == "mechanic" and u["is_active"] is True
     assert u["location_ids"] == [str(director["loc"].id)]
-    assert set(u) == {"id", "login", "full_name", "role", "is_active", "location_ids", "created_at"}
+    assert set(u) == {
+        "id", "login", "full_name", "role", "is_active", "location_ids", "created_at",
+        "last_login_at", "telegram_linked", "telegram_username",
+    }  # fmt: skip
     assert GOOD_PW not in r.text and "hash" not in r.text
 
     rows = await audit(db, "user", "create")
@@ -385,6 +388,7 @@ async def test_location_create_read_update(api, db, director):
     loc = r.json()
     assert set(loc) == {
         "id", "name", "address", "phone", "is_active", "code", "timezone", "work_start", "work_end",
+        "has_telegram_chat", "telegram_chat_id",
     }  # fmt: skip
     assert loc["phone"] == "+79991234567" and loc["is_active"] is True
 

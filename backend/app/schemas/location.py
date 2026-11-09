@@ -4,7 +4,7 @@ from functools import lru_cache
 from typing import Annotated
 from zoneinfo import available_timezones
 
-from pydantic import AfterValidator, BeforeValidator
+from pydantic import AfterValidator, BeforeValidator, Field
 
 from app.core.types import Phone, SafeText, _must_be_str
 from app.schemas.common import PatchBase, Strict
@@ -34,6 +34,10 @@ Timezone = Annotated[str, BeforeValidator(_must_be_str), AfterValidator(_timezon
 WorkTime = Annotated[str, BeforeValidator(_must_be_str), AfterValidator(_hhmm)]
 
 
+# Идентификатор чата Telegram: целое со знаком int64 (у групп отрицательный), без приведения типов.
+TelegramChatId = Annotated[int, Field(strict=True, ge=-(2**63), le=2**63 - 1)]
+
+
 class LocationCreate(Strict):
     name: SafeText(100, 1)  # type: ignore[valid-type]
     address: SafeText(255, 1)  # type: ignore[valid-type]
@@ -44,7 +48,7 @@ class LocationCreate(Strict):
 
 
 class LocationUpdate(PatchBase):
-    nullable_fields = frozenset({"phone"})
+    nullable_fields = frozenset({"phone", "telegram_chat_id"})
 
     name: SafeText(100, 1) | None = None  # type: ignore[valid-type]
     address: SafeText(255, 1) | None = None  # type: ignore[valid-type]
@@ -53,6 +57,7 @@ class LocationUpdate(PatchBase):
     timezone: Timezone | None = None
     work_start: WorkTime | None = None
     work_end: WorkTime | None = None
+    telegram_chat_id: TelegramChatId | None = None
 
 
 class LocationRead(Strict):
@@ -65,3 +70,6 @@ class LocationRead(Strict):
     timezone: str
     work_start: str
     work_end: str
+    has_telegram_chat: bool = False
+    # Значение видит только руководитель, остальным null.
+    telegram_chat_id: int | None = None

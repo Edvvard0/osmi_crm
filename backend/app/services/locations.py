@@ -24,7 +24,7 @@ def _check_hours(start: time, end: time) -> None:
         raise AppError(422, "validation_error", {"work_end": "must_be_after_work_start"})
 
 
-def to_read(loc: Location) -> LocationRead:
+def to_read(loc: Location, viewer: User | None = None) -> LocationRead:
     return LocationRead(
         id=loc.id,
         name=loc.name,
@@ -35,6 +35,10 @@ def to_read(loc: Location) -> LocationRead:
         timezone=loc.timezone,
         work_start=_fmt(loc.work_start),
         work_end=_fmt(loc.work_end),
+        has_telegram_chat=loc.telegram_chat_id is not None,
+        telegram_chat_id=(
+            loc.telegram_chat_id if viewer is not None and viewer.role == "director" else None
+        ),
     )
 
 
@@ -47,14 +51,17 @@ def _snapshot(loc: Location) -> dict[str, object]:
         "timezone": loc.timezone,
         "work_start": _fmt(loc.work_start),
         "work_end": _fmt(loc.work_end),
+        "telegram_chat_id": loc.telegram_chat_id,
     }
 
 
-async def list_locations(session: AsyncSession, allowed: list[uuid.UUID]) -> list[LocationRead]:
+async def list_locations(
+    session: AsyncSession, allowed: list[uuid.UUID], viewer: User | None = None
+) -> list[LocationRead]:
     rows = await session.scalars(
         select(Location).where(Location.id.in_(allowed)).order_by(Location.name, Location.id)
     )
-    return [to_read(r) for r in rows]
+    return [to_read(r, viewer) for r in rows]
 
 
 async def get_location(
@@ -107,7 +114,7 @@ async def create_location(
         client=client,
     )
     await session.commit()
-    return to_read(loc)
+    return to_read(loc, actor)
 
 
 async def update_location(
@@ -141,4 +148,4 @@ async def update_location(
             client=client,
         )
     await session.commit()
-    return to_read(loc)
+    return to_read(loc, actor)

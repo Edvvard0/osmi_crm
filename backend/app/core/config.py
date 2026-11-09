@@ -21,6 +21,19 @@ class Settings(BaseSettings):
     lock_minutes: int = 15
     seed_director_password: SecretStr | None = None
 
+    # Модуль 7: Telegram (значения в API не отдаются)
+    telegram_bot_token: SecretStr | None = None
+    telegram_bot_username: str = ""
+    telegram_mode: Literal["webhook", "polling", "off"] = "off"
+    telegram_webhook_secret: SecretStr | None = None
+    telegram_api_base: str = "https://api.telegram.org"
+    public_base_url: str = ""
+    app_timezone: str = "Europe/Moscow"
+
+    @property
+    def telegram_enabled(self) -> bool:
+        return bool(self.telegram_bot_token and self.telegram_bot_token.get_secret_value())
+
     @property
     def is_prod(self) -> bool:
         return self.env == "prod"

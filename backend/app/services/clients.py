@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Literal
 
 from sqlalchemy import func, select
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
 from app.models import Client, User, Vehicle
+from app.models.work_order import WorkOrder
 from app.schemas.client import ClientCreate, ClientDetail, ClientPage, ClientRead, ClientUpdate
 from app.services.audit import ClientInfo, diff, write_audit
 from app.services.search import clean_term, client_cond
@@ -65,8 +67,34 @@ async def counts_map(session: AsyncSession, ids: list[uuid.UUID]) -> dict[uuid.U
     return result
 
 
+async def add_order_stats(session: AsyncSession, reads: list[ClientRead]) -> list[ClientRead]:
+    """Дополняет карточки статистикой по закрытым заказам клиента (все точки, модуль 5)."""
+    if not reads:
+        return reads
+    rows = await session.execute(
+        select(
+            WorkOrder.client_id,
+            func.count(),
+            func.coalesce(func.sum(WorkOrder.total), 0),
+            func.max(WorkOrder.closed_at),
+        )
+        .where(WorkOrder.client_id.in_([r.id for r in reads]), WorkOrder.status == "closed")
+        .group_by(WorkOrder.client_id)
+    )
+    stats = {cid: (n, Decimal(total), last) for cid, n, total, last in rows}
+    for r in reads:
+        if r.id in stats:
+            n, total, last = stats[r.id]
+            r.orders_count = n
+            r.total_spent = f"{total:.2f}"
+            r.average_check = f"{(total / n).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP):.2f}"
+            r.last_visit_at = last
+    return reads
+
+
 async def read_client(session: AsyncSession, client: Client) -> ClientRead:
-    return to_read(client, (await counts_map(session, [client.id]))[client.id])
+    read = to_read(client, (await counts_map(session, [client.id]))[client.id])
+    return (await add_order_stats(session, [read]))[0]
 
 
 async def get_client(
@@ -87,7 +115,7 @@ async def get_client_detail(session: AsyncSession, client_id: uuid.UUID) -> Clie
             .order_by(Vehicle.created_at, Vehicle.id)
         )
     ).all()
-    base = to_read(client, len(vehicles))
+    base = (await add_order_stats(session, [to_read(client, len(vehicles))]))[0]
     return ClientDetail(**base.model_dump(), vehicles=[vehicle_to_read(v) for v in vehicles])
 
 
@@ -122,7 +150,8 @@ async def list_clients(
         )
     ).all()
     counts = await counts_map(session, [c.id for c in rows])
-    return ClientPage(items=[to_read(c, counts[c.id]) for c in rows], total=total)
+    items = await add_order_stats(session, [to_read(c, counts[c.id]) for c in rows])
+    return ClientPage(items=items, total=total)
 
 
 async def _ensure_phone_free(

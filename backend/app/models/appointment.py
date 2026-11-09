@@ -44,8 +44,9 @@ class Appointment(Base):
         String(15), server_default=text("'scheduled'"), default="scheduled"
     )
     comment: Mapped[str | None] = mapped_column(String(1000))
-    # FK на work_orders добавит модуль 5.
-    work_order_id: Mapped[uuid.UUID | None] = mapped_column(unique=True)
+    work_order_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("work_orders.id"), unique=True
+    )
     created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

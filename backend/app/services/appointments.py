@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppError
 from app.models import Client, Location, Service, User, Vehicle, WorkPost
 from app.models.appointment import OCCUPYING_STATUSES, Appointment, AppointmentService
+from app.models.work_order import WorkOrder
 from app.schemas.appointment import (
     AppointmentCreate,
     AppointmentRead,
@@ -20,6 +21,7 @@ from app.schemas.appointment import (
     ServiceRef,
     VehicleRef,
 )
+from app.services.appointment_events import publish_created, publish_no_show
 from app.services.audit import ClientInfo, diff, write_audit
 
 # Переходы статуса; arrived / no_show / cancelled — конечные.
@@ -192,6 +194,14 @@ async def _reads(session: AsyncSession, appts: list[Appointment]) -> list[Appoin
             select(Location).where(Location.id.in_({a.location_id for a in appts}))
         )
     }
+    order_numbers = {
+        oid: number
+        for oid, number in await session.execute(
+            select(WorkOrder.id, WorkOrder.number).where(
+                WorkOrder.id.in_({a.work_order_id for a in appts if a.work_order_id})
+            )
+        )
+    }
     out: list[AppointmentRead] = []
     for a in appts:
         tz, client, vehicle = zones[a.location_id], clients[a.client_id], vehicles[a.vehicle_id]
@@ -218,6 +228,7 @@ async def _reads(session: AsyncSession, appts: list[Appointment]) -> list[Appoin
                     plate_number=vehicle.plate_number,
                 ),
                 work_order_id=a.work_order_id,
+                work_order_number=order_numbers.get(a.work_order_id) if a.work_order_id else None,
                 created_by=a.created_by,
                 created_at=a.created_at.astimezone(tz),
                 updated_at=a.updated_at.astimezone(tz),
@@ -378,6 +389,7 @@ async def create_appointment(
         },
         client=client_info,
     )
+    await publish_created(session, appt, actor)
     await session.commit()
     return await _read_one(session, appt)
 
@@ -494,5 +506,7 @@ async def change_status(
         changes={"status": {"old": old, "new": status}},
         client=client_info,
     )
+    if status == "no_show":
+        await publish_no_show(session, appt, actor)
     await session.commit()
     return await _read_one(session, appt)

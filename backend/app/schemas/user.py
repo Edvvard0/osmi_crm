@@ -18,6 +18,9 @@ class UserRead(Strict):
     is_active: bool
     location_ids: list[uuid.UUID]
     created_at: datetime
+    last_login_at: datetime | None = None
+    telegram_linked: bool = False
+    telegram_username: str | None = None
 
 
 class UserPage(Strict):

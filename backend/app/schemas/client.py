@@ -149,6 +149,11 @@ class ClientRead(Strict):
     vehicles_count: int
     created_at: datetime
     archived_at: datetime | None
+    # Статистика по закрытым заказам (модуль 5), деньги — строками.
+    orders_count: int = 0
+    total_spent: str = "0.00"
+    average_check: str = "0.00"
+    last_visit_at: datetime | None = None
 
 
 class ClientDetail(ClientRead):

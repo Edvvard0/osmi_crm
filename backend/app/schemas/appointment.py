@@ -77,6 +77,7 @@ class AppointmentRead(Strict):
     client: ClientRef
     vehicle: VehicleRef
     work_order_id: uuid.UUID | None
+    work_order_number: str | None = None
     created_by: uuid.UUID
     created_at: datetime
     updated_at: datetime

@@ -69,6 +69,12 @@ class RefreshSession(Base):
             "user_id",
             postgresql_where=text("revoked_at IS NULL"),
         ),
+        Index("ix_refresh_sessions_family", "family_id", text("created_at DESC")),
+        Index(
+            "ix_refresh_sessions_revoked",
+            "revoked_at",
+            postgresql_where=text("revoked_at IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_id)

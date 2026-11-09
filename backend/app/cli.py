@@ -84,10 +84,37 @@ async def _run_seed() -> int:  # pragma: no cover
     return 0
 
 
+async def _run_set_webhook() -> int:  # pragma: no cover
+    from app.services import telegram_client
+
+    settings = get_settings()
+    client = telegram_client.get_client()
+    if client is None or settings.telegram_mode != "webhook":
+        print("Telegram выключен или TELEGRAM_MODE != webhook: ничего не сделано")
+        return 0
+    if not settings.public_base_url or settings.telegram_webhook_secret is None:
+        print("Задайте PUBLIC_BASE_URL и TELEGRAM_WEBHOOK_SECRET", file=sys.stderr)
+        return 1
+    url = settings.public_base_url.rstrip("/") + "/api/v1/telegram/webhook"
+    try:
+        await client.set_webhook(url, settings.telegram_webhook_secret.get_secret_value())
+    except telegram_client.TelegramError as exc:
+        print(f"Ошибка Bot API: {exc.kind}", file=sys.stderr)
+        return 1
+    finally:
+        await telegram_client.close_client()
+    print("Вебхук зарегистрирован:", url)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     parser = argparse.ArgumentParser(prog="app.cli")
-    parser.add_subparsers(dest="command", required=True).add_parser("seed")
-    parser.parse_args(argv)
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("seed")
+    sub.add_parser("telegram-set-webhook")
+    args = parser.parse_args(argv)
+    if args.command == "telegram-set-webhook":
+        return asyncio.run(_run_set_webhook())
     return asyncio.run(_run_seed())
 
 

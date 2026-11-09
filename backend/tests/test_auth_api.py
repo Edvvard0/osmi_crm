@@ -39,6 +39,9 @@ async def test_login_success_shape_and_cookie(api, db):
         "is_active": True,
         "location_ids": [str(loc.id)],
         "created_at": body["user"]["created_at"],
+        "last_login_at": body["user"]["last_login_at"],
+        "telegram_linked": False,
+        "telegram_username": None,
     }
     assert "refresh_token" not in r.text
     cookie = r.headers["set-cookie"]

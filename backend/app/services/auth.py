@@ -16,6 +16,7 @@ from app.core.security import (
 )
 from app.models import RefreshSession, User
 from app.services.audit import ClientInfo, clean, write_audit
+from app.services.events import publish
 from app.services.sessions import issue_session, revoke_family, revoke_user_sessions, utcnow
 
 
@@ -31,7 +32,7 @@ async def _fail(
         session,
         action="login_failed",
         entity_type="user",
-        entity_id=user.id if user else None,
+        entity_id=None,  # журнал не раскрывает, существует ли логин
         changes={"login": clean(login), "reason": reason},
         client=client,
     )
@@ -60,6 +61,19 @@ async def login(
         user.failed_login_count += 1
         if user.failed_login_count >= settings.max_failed_logins:
             user.locked_until = now + timedelta(minutes=settings.lock_minutes)
+            await publish(
+                session,
+                "user.locked",
+                {
+                    "user_id": str(user.id),
+                    "login": user.login,
+                    "full_name": user.full_name,
+                    "locked_until": user.locked_until.isoformat(),
+                },
+                location_id=None,
+                actor_id=None,
+                dedup_key=f"user.locked:{user.id}:{int(user.locked_until.timestamp())}",
+            )
             raise await _fail(session, client, login_name, "locked_out", user, locked)
         raise await _fail(session, client, login_name, "bad_password", user, invalid)
     if not user.is_active:

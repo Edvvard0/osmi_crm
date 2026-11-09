@@ -37,6 +37,9 @@ def to_read(user: User, location_ids: list[uuid.UUID]) -> UserRead:
         is_active=user.is_active,
         location_ids=location_ids,
         created_at=user.created_at,
+        last_login_at=user.last_login_at,
+        telegram_linked=user.telegram_chat_id is not None,
+        telegram_username=user.telegram_username,
     )
 
 
