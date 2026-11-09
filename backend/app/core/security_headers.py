@@ -14,7 +14,7 @@ _HSTS = "max-age=63072000; includeSubDomains"
 _API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
 
 
-def security_header_items(path: str, prod: bool) -> list[tuple[str, str]]:
+def security_header_items(path: str, hsts: bool) -> list[tuple[str, str]]:
     """Заголовки безопасности для ответа на `path` (имена в нижнем регистре)."""
     items = [
         ("x-content-type-options", "nosniff"),
@@ -24,7 +24,7 @@ def security_header_items(path: str, prod: bool) -> list[tuple[str, str]]:
     ]
     if path not in _DOC_PATHS:  # Swagger UI в dev грузит скрипты и стили с CDN
         items.append(("content-security-policy", _API_CSP))
-    if prod:
+    if hsts:
         items.append(("strict-transport-security", _HSTS))
     if path.startswith("/api/v1/") and not path.startswith("/api/v1/health"):
         items.append(("cache-control", "no-store"))
@@ -39,14 +39,14 @@ class SecurityHeadersMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        prod = get_settings().is_prod
+        hsts = get_settings().hsts
         path = str(scope.get("path", ""))
 
         async def send_wrapper(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = list(message.get("headers", []))
                 present = {k.lower() for k, _ in headers}
-                for name, value in security_header_items(path, prod):
+                for name, value in security_header_items(path, hsts):
                     if name.encode() not in present:
                         headers.append((name.encode(), value.encode()))
                 message = {**message, "headers": headers}

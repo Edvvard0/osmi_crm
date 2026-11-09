@@ -1,0 +1,22 @@
+# Edge-прокси без TLS: доступ по http://IP:порт, пока у сервера нет домена
+# (docker-compose.ip.yml, docs/deployment.md, «Без домена»). Тело сервера то же, что у HTTPS-шаблона.
+# HSTS из security-headers.conf по http браузеры игнорируют (RFC 6797), PWA и офлайн-кэш
+# без HTTPS не работают — это временный режим.
+
+limit_req_zone $binary_remote_addr zone=api:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=auth:10m rate=30r/m;
+limit_req_status 429;
+
+server {
+  listen 80 default_server;
+  server_name _;
+  server_tokens off;
+
+  location = /healthz {
+    access_log off;
+    default_type text/plain;
+    return 200 "ok\n";
+  }
+
+  include /etc/nginx/snippets/app.conf;
+}

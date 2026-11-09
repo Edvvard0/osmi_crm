@@ -83,6 +83,21 @@ chmod 600 .env.prod
 sh deploy/scripts/compose.sh run --rm --no-deps --entrypoint certbot certbot renew --dry-run
 ```
 
+### Без домена (http://IP:порт)
+
+Временный режим, когда домена ещё нет или порты 80/443 заняты другими проектами на сервере.
+
+1. В `.env.prod`: `DOMAIN=<IP сервера>`, `HTTP_PORT=8088` (любой свободный порт).
+2. `make prod-up`, затем `make prod-seed`. Шаг `make prod-cert` пропускается: сертификат не нужен.
+
+При заданном `HTTP_PORT` скрипты подключают `docker-compose.ip.yml`:
+- `edge` слушает только `HTTP_PORT` с шаблоном `deploy/nginx/nginx.http.conf.template`; 80/443 не занимаются, `certbot` не запускается;
+- backend получает `INSECURE_HTTP=true`: refresh-cookie без флага `Secure` (иначе браузер не сохранит её по http) и без HTTPS-заголовка HSTS.
+
+Ограничения: трафик не шифруется, PWA не устанавливается, офлайн-кэш и service worker не работают (браузеры включают их только по HTTPS). Порты, опубликованные Docker, открыты наружу в обход ufw.
+
+Переход на домен: направьте DNS на сервер, очистите `HTTP_PORT`, задайте `DOMAIN=<домен>` и выполните шаги 1–4 выше. Если 80/443 заняты другим прокси (Caddy, nginx), добавьте в него сайт домена с проксированием на `127.0.0.1:<HTTP_PORT>`, оставьте `HTTP_PORT` и задайте в `.env.prod` `PUBLIC_BASE_URL=https://<домен>` и `INSECURE_HTTP=false` (TLS тогда завершает внешний прокси).
+
 ## 6. Telegram
 
 Создайте бота у BotFather, получите токен и имя. В `.env.prod`:

@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     backup_retention_days: int = Field(default=30, ge=1)
     backup_marker_path: str = "/backup/last_success"
     app_version: str = "dev"
+    # Временный режим без TLS (доступ по IP:порт, пока нет домена): refresh-cookie без Secure,
+    # без HSTS. Браузер не сохранит Secure-cookie по http, и вход не переживёт обновления страницы.
+    insecure_http: bool = False
 
     @field_validator(
         "telegram_bot_token", "telegram_webhook_secret", "seed_director_password", mode="before"
@@ -92,6 +95,16 @@ class Settings(BaseSettings):
     @property
     def is_prod(self) -> bool:
         return self.env == "prod"
+
+    @property
+    def secure_cookies(self) -> bool:
+        """Refresh-cookie с флагом Secure: везде, кроме dev и режима без TLS."""
+        return self.env != "dev" and not self.insecure_http
+
+    @property
+    def hsts(self) -> bool:
+        """Заголовок HSTS: только прод по HTTPS."""
+        return self.is_prod and not self.insecure_http
 
 
 @lru_cache

@@ -113,7 +113,7 @@ def error_response(
     body = {"error": error}
     resp = JSONResponse(body, status_code=status)
     # Ответы ServerErrorMiddleware (500) идут мимо SecurityHeadersMiddleware.
-    for name, value in security_header_items(request.url.path, get_settings().is_prod):
+    for name, value in security_header_items(request.url.path, get_settings().hsts):
         resp.headers.setdefault(name, value)
     if rid:
         resp.headers["X-Request-ID"] = rid

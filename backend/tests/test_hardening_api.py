@@ -385,6 +385,22 @@ async def test_hsts_only_in_prod_and_docs_hidden(prod_client: httpx.AsyncClient)
     assert (await prod_client.get("/openapi.json")).status_code == 404
 
 
+def test_insecure_http_mode_disables_secure_cookie_and_hsts() -> None:
+    """Режим без TLS (доступ по IP:порт): cookie без Secure и без HSTS, иначе браузер не сохранит
+    refresh-cookie по http. В обычном проде оба включены, в dev cookie без Secure."""
+    from app.core.config import Settings
+    from app.core.security_headers import security_header_items
+
+    prod = Settings(_env_file=None, env="prod")
+    plain = Settings(_env_file=None, env="prod", insecure_http=True)
+    dev = Settings(_env_file=None, env="dev")
+    assert (prod.secure_cookies, prod.hsts) == (True, True)
+    assert (plain.secure_cookies, plain.hsts) == (False, False)
+    assert (dev.secure_cookies, dev.hsts) == (False, False)
+    names = {n for n, _ in security_header_items("/api/v1/health", plain.hsts)}
+    assert "strict-transport-security" not in names
+
+
 async def test_dev_docs_page_has_no_restrictive_csp(client: httpx.AsyncClient) -> None:
     r = await client.get("/api/docs")
     assert r.status_code == 200

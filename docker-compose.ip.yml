@@ -1,0 +1,32 @@
+# Прод без домена: приложение по http://<IP>:${HTTP_PORT}, без TLS и certbot.
+# Накладывается поверх docker-compose.prod.yml:
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.ip.yml up -d --build
+# Скрипты make prod-* подключают этот файл сами, если в .env.prod задан HTTP_PORT
+# (deploy/scripts/lib.sh). В .env.prod: DOMAIN=<IP сервера>, HTTP_PORT=8088.
+# Порты 80/443 не занимаются — на сервере могут работать другие проекты.
+
+x-plain-http: &plain-http
+  # За внешним HTTPS-прокси: PUBLIC_BASE_URL=https://<домен> и INSECURE_HTTP=false в .env.prod.
+  PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://${DOMAIN}:${HTTP_PORT:-8088}}
+  INSECURE_HTTP: ${INSECURE_HTTP:-true}
+
+services:
+  migrate:
+    environment: *plain-http
+  api:
+    environment: *plain-http
+  worker:
+    environment: *plain-http
+
+  edge:
+    ports: !override
+      - "${HTTP_PORT:-8088}:80"
+    volumes: !override
+      - ./deploy/nginx/nginx.http.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./deploy/nginx/snippets:/etc/nginx/snippets:ro
+      - ./frontend/public/offline.html:/usr/share/nginx/offline/offline.html:ro
+      - ./frontend/public/offline.css:/usr/share/nginx/offline/offline.css:ro
+
+  # Сертификаты не нужны.
+  certbot:
+    profiles: [tls]

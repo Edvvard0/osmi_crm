@@ -7,3 +7,7 @@ set -a
 . ./.env.prod
 set +a
 COMPOSE="docker compose --env-file .env.prod -f docker-compose.prod.yml"
+# Без домена (HTTP_PORT задан): http://IP:порт без TLS, 80/443 не занимаются (docker-compose.ip.yml).
+if [ -n "${HTTP_PORT:-}" ]; then
+  COMPOSE="$COMPOSE -f docker-compose.ip.yml"
+fi
