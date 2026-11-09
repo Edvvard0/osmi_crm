@@ -15,6 +15,8 @@ class AuditLog(Base):
         Index("ix_audit_log_created_at", text("created_at DESC")),
         Index("ix_audit_log_user", "user_id", text("created_at DESC")),
         Index("ix_audit_log_entity", "entity_type", "entity_id"),
+        Index("ix_audit_log_location", "location_id", text("created_at DESC")),
+        Index("ix_audit_log_action", "action", text("created_at DESC")),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)

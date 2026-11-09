@@ -34,6 +34,28 @@ def clean(value: str, limit: int = 64) -> str:
     return _CTRL.sub("", value)[:limit]
 
 
+_SECRET_SUBSTR = ("password", "token", "secret", "hash")
+_SECRET_WORD = "code"
+REDACTED = "***"
+
+
+def _is_secret_key(key: str) -> bool:
+    low = key.lower()
+    return any(s in low for s in _SECRET_SUBSTR) or _SECRET_WORD in low.split("_")
+
+
+def redact(value: Any) -> Any:
+    """Заменяет значения секретных ключей (password, token, secret, hash, code) на `***`."""
+    if isinstance(value, dict):
+        return {
+            k: REDACTED if isinstance(k, str) and _is_secret_key(k) else redact(v)
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [redact(v) for v in value]
+    return value
+
+
 def diff(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
     return {k: {"old": old.get(k), "new": v} for k, v in new.items() if old.get(k) != v}
 
@@ -57,7 +79,7 @@ def write_audit(
             entity_type=entity_type,
             entity_id=entity_id,
             location_id=location_id,
-            changes=changes,
+            changes=redact(changes) if changes is not None else None,
             ip=client.ip,
             user_agent=client.user_agent,
         )
