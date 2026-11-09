@@ -128,6 +128,7 @@ export function PaymentDialog({ order, onClose, onPaid }: { order: PayableOrder;
           label="Комментарий (необязательно)"
           maxLength={500}
           value={comment}
+          error={fieldErrs ? fieldMessage(err, "comment") : undefined}
           onChange={(e) => {
             setComment(e.target.value);
             touch();

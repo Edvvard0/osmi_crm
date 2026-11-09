@@ -5,15 +5,15 @@ from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import Date, cast, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
 from app.models import Location, Role, User, UserLocation
 from app.models.appointment import Appointment
 from app.models.cash import Payment
-from app.models.stock import StockBalance
 from app.models.catalog import Part, Service
+from app.models.stock import StockBalance
 from app.models.work_order import WorkOrder, WorkOrderItem, WorkOrderPart
 from app.schemas.audit import UserRef
 from app.schemas.reports import (
@@ -46,26 +46,24 @@ from app.services.report_common import (
     NOT_OVERDUE,
     ZERO,
     Period,
+    day_bounds,
     dec,
     hours_from_minutes,
     in_period,
-    int_s,
     kpi_count,
     kpi_money,
     kpi_percent,
     load_percent,
-    local_day,
-    local_today,
     loc_ids,
+    local_today,
     money_s,
     pct_s,
     post_load,
+    q2,
     ratio_pct,
     resolve_locations,
     resolve_period,
-    q2,
     tz_of,
-    day_bounds,
 )
 from app.services.report_queries import Metrics, closed_orders, net_payments, period_metrics
 from app.services.settings import get_setting
@@ -144,9 +142,7 @@ async def _revenue_series(
     return points
 
 
-async def _top_services(
-    session: AsyncSession, locs: list[Location], p: Period
-) -> list[TopService]:
+async def _top_services(session: AsyncSession, locs: list[Location], p: Period) -> list[TopService]:
     ids = loc_ids(locs)
     if not ids:
         return []
@@ -171,9 +167,7 @@ async def _top_services(
     ]
 
 
-async def _attention(
-    session: AsyncSession, locs: list[Location], p: Period
-) -> Attention:
+async def _attention(session: AsyncSession, locs: list[Location], p: Period) -> Attention:
     ids = loc_ids(locs)
     refund_count, refund_total = 0, ZERO
     if ids:
@@ -232,6 +226,7 @@ async def _attention(
             .order_by(WorkOrder.planned_ready_at, WorkOrder.id)
             .limit(5)
         ):
+            assert planned is not None  # NULL отсекается условием planned_ready_at < now
             overdue_items.append(
                 AttentionOrder(
                     id=oid,
@@ -520,7 +515,9 @@ async def dashboard_today(
     done_today: dict[uuid.UUID, int] = defaultdict(int)
     if mech_ids:
         for item_id, mech, name, number in await session.execute(
-            select(WorkOrderItem.id, WorkOrderItem.mechanic_id, WorkOrderItem.name, WorkOrder.number)
+            select(
+                WorkOrderItem.id, WorkOrderItem.mechanic_id, WorkOrderItem.name, WorkOrder.number
+            )
             .join(WorkOrder, WorkOrder.id == WorkOrderItem.work_order_id)
             .where(
                 WorkOrder.location_id == loc.id,
@@ -529,6 +526,7 @@ async def dashboard_today(
             )
             .order_by(WorkOrderItem.started_at.desc().nulls_last(), WorkOrderItem.id)
         ):
+            assert mech is not None  # отфильтровано условием mechanic_id IN (...)
             in_progress[mech] += 1
             active.setdefault(mech, ActiveItem(item_id=item_id, name=name, order_number=number))
         for mech, n in await session.execute(
@@ -543,6 +541,7 @@ async def dashboard_today(
             )
             .group_by(WorkOrderItem.mechanic_id)
         ):
+            assert mech is not None  # отфильтровано условием mechanic_id IN (...)
             done_today[mech] = int(n)
 
     return DashboardToday(
@@ -568,4 +567,3 @@ async def dashboard_today(
             for uid, name in mechanics_rows
         ],
     )
-

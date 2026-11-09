@@ -2,7 +2,6 @@
 
 import re
 from datetime import UTC, date, datetime, time
-from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession

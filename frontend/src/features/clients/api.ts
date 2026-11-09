@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/shared/api/client";
-import type { Client, ClientDetail, ClientSource, ClientType, Page, SearchHit, Vehicle, VehicleDetail } from "@/shared/api/types";
+import type { Client, ClientDetail, ClientSource, ClientType, Page, Vehicle, VehicleDetail } from "@/shared/api/types";
 
 export const CLIENTS_PAGE_SIZE = 50;
 
@@ -119,15 +119,5 @@ export function useArchiveVehicle(id: string) {
   return useMutation({
     mutationFn: (archive: boolean) => api<Vehicle>(`/vehicles/${encodeURIComponent(id)}/${archive ? "archive" : "restore"}`, { method: "POST", body: {} }),
     onSuccess: inv,
-  });
-}
-
-export function useGlobalSearch(q: string) {
-  const enabled = q.trim().length >= 2;
-  return useQuery({
-    queryKey: ["search", q],
-    queryFn: () => api<SearchHit[]>(`/search?${new URLSearchParams({ q, limit: "10" }).toString()}`),
-    enabled,
-    staleTime: 5_000,
   });
 }

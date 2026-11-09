@@ -87,7 +87,9 @@ async def _recipients(
             return []
         stmt = stmt.where(
             User.role == "manager",
-            User.id.in_(select(UserLocation.user_id).where(UserLocation.location_id == location_id)),
+            User.id.in_(
+                select(UserLocation.user_id).where(UserLocation.location_id == location_id)
+            ),
         )
         if kind == "location_managers_except_actor" and actor_id is not None:
             stmt = stmt.where(User.id != actor_id)

@@ -50,7 +50,11 @@ async def my_earnings(session: AsyncSession, actor: User, month_value: str | Non
     actual_minutes = 0
     if calc is not None:
         accrued, adj_total, total = calc.accrued, calc.adjustments_total, calc.total
-        norm_hours, items_done, actual_minutes = calc.norm_hours, calc.items_done, calc.actual_minutes
+        norm_hours, items_done, actual_minutes = (
+            calc.norm_hours,
+            calc.items_done,
+            calc.actual_minutes,
+        )
         adjustments = [
             EarningsAdjustment(amount=money_s(a.amount), reason=a.reason, created_at=a.created_at)
             for a in sorted(calc.adjustments, key=lambda a: a.created_at, reverse=True)
@@ -76,7 +80,9 @@ async def my_earnings(session: AsyncSession, actor: User, month_value: str | Non
         norm_hours=money_s(norm_hours),
         actual_hours=money_s(hours_from_minutes(actual_minutes)),
         adjustments=adjustments,
-        awaiting_close=AwaitingClose(items_count=awaiting_count, norm_hours=money_s(awaiting_hours)),
+        awaiting_close=AwaitingClose(
+            items_count=awaiting_count, norm_hours=money_s(awaiting_hours)
+        ),
         days=[EarningsDay(date=d, items=days[d]) for d in sorted(days, reverse=True)],
         server_time=datetime.now(UTC),
     )

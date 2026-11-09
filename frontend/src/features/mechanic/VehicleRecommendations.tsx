@@ -4,7 +4,7 @@ import { type FormEvent, useState } from "react";
 import { useEntityOrders } from "@/features/orders/api";
 import type { WorkOrderListItem } from "@/features/orders/types";
 import { api } from "@/shared/api/client";
-import { toAppError } from "@/shared/api/errors";
+import { fieldText, toAppError } from "@/shared/api/errors";
 import { DEPARTMENT_LABELS, type Department } from "@/shared/api/types";
 import { parseDecimal } from "@/shared/lib/money";
 import { useToast } from "@/shared/ui/toast";
@@ -94,7 +94,11 @@ function AddDialog({ vehicleId, onClose }: { vehicleId: string; onClose: () => v
       { text: t, priority },
       {
         onSuccess: () => { toast.push("success", "Рекомендация добавлена"); onClose(); },
-        onError: (e2) => (toAppError(e2).fields.text ? setFieldErr("Рекомендация: от 1 до 1000 символов") : setError(mechanicErrorText(e2))),
+        onError: (e2) => {
+          const fe = fieldText(toAppError(e2), "text", "Рекомендация: от 1 до 1000 символов");
+          if (fe) setFieldErr(fe);
+          else setError(mechanicErrorText(e2));
+        },
       },
     );
   }

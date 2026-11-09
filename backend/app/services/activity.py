@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Date, and_, cast, func, select
+from sqlalchemy import ColumnElement, Date, and_, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -158,7 +158,9 @@ class Part:
     ended_at: datetime | None
 
 
-def _split(started: datetime, ended: datetime | None, now: datetime, tz: ZoneInfo) -> list[tuple[date, float]]:
+def _split(
+    started: datetime, ended: datetime | None, now: datetime, tz: ZoneInfo
+) -> list[tuple[date, float]]:
     """Делит интервал по местным полуночам. Пауза между интервалами не учитывается."""
     end = ended or now
     cur = started.astimezone(UTC)
@@ -220,12 +222,12 @@ def _minutes(seconds: float) -> int:
 # ---------------- действия менеджера / директора ----------------
 
 
-def _audit_day() -> object:
+def _audit_day() -> ColumnElement[date]:
     tz = func.coalesce(Location.timezone, get_settings().app_timezone)
     return cast(func.timezone(tz, AuditLog.created_at), Date)
 
 
-def _audit_filters(user_id: uuid.UUID, first: date, last: date) -> list[object]:
+def _audit_filters(user_id: uuid.UUID, first: date, last: date) -> list[ColumnElement[bool]]:
     lo = datetime.combine(first - timedelta(days=2), datetime.min.time(), tzinfo=UTC)
     hi = datetime.combine(last + timedelta(days=2), datetime.min.time(), tzinfo=UTC)
     day = _audit_day()
@@ -259,7 +261,9 @@ def level_of(value: Decimal, thresholds: list[int | float]) -> int:
 # ---------------- тепловая карта ----------------
 
 
-def _heatmap_period(target: Target, date_from: date | None, date_to: date | None) -> tuple[date, date]:
+def _heatmap_period(
+    target: Target, date_from: date | None, date_to: date | None
+) -> tuple[date, date]:
     if date_from is not None:
         check_year(date_from, "from")
     if date_to is not None:
@@ -311,7 +315,7 @@ async def heatmap(
                     hours=money_s(hours_exact),
                     actions=None,
                     works_count=works.get(day, 0),
-                    level=level,  # type: ignore[arg-type]
+                    level=level,
                     order_numbers=orders.get(day, []),
                 )
             )
@@ -326,7 +330,7 @@ async def heatmap(
                     hours=None,
                     actions=count,
                     works_count=works.get(day, 0),
-                    level=level,  # type: ignore[arg-type]
+                    level=level,
                     order_numbers=orders.get(day, []),
                 )
             )
@@ -340,7 +344,11 @@ async def heatmap(
         day += timedelta(days=1)
 
     if target.kind == "hours":
-        average = (total / working).quantize(Decimal("0.01"), ROUND_HALF_UP) if working else Decimal("0.00")
+        average = (
+            (total / working).quantize(Decimal("0.01"), ROUND_HALF_UP)
+            if working
+            else Decimal("0.00")
+        )
         average_s = f"{average:.2f}"
         summary = ActivitySummary(
             working_days=working,
@@ -350,7 +358,9 @@ async def heatmap(
             longest_streak_days=longest,
         )
     else:
-        average = (total / working).quantize(Decimal("0.1"), ROUND_HALF_UP) if working else Decimal("0.0")
+        average = (
+            (total / working).quantize(Decimal("0.1"), ROUND_HALF_UP) if working else Decimal("0.0")
+        )
         summary = ActivitySummary(
             working_days=working,
             total_hours=None,
@@ -360,7 +370,7 @@ async def heatmap(
         )
     return ActivityHeatmap(
         user=_user_ref(target.user),
-        kind=target.kind,  # type: ignore[arg-type]
+        kind=target.kind,
         from_=frm,
         to=to,
         timezone=target.tz_name,
@@ -426,16 +436,21 @@ async def _actions_by_day(
     )
     order_ids: set[uuid.UUID] = set()
     for d, entity_id, n in rows:
+        assert entity_id is not None  # отфильтровано в запросе (is_not(None))
         per_day[d][entity_id] = int(n)
         order_ids.add(entity_id)
     numbers: dict[uuid.UUID, str] = {}
     if order_ids:
         numbers = dict(
-            (await session.execute(select(WorkOrder.id, WorkOrder.number).where(WorkOrder.id.in_(order_ids)))).all()  # type: ignore[arg-type]
+            (
+                await session.execute(
+                    select(WorkOrder.id, WorkOrder.number).where(WorkOrder.id.in_(order_ids))
+                )
+            ).all()
         )
     orders: dict[date, list[str]] = {}
     for d, per in per_day.items():
-        ranked = defaultdict(float)
+        ranked: defaultdict[str, float] = defaultdict(float)
         for oid, n in per.items():
             if oid in numbers:
                 ranked[numbers[oid]] += n
@@ -512,7 +527,7 @@ async def details(
         days = await _action_details(session, target, frm, to)
     return ActivityDetails(
         user=_user_ref(target.user),
-        kind=target.kind,  # type: ignore[arg-type]
+        kind=target.kind,
         days=days,
     )
 

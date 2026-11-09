@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { CheckCheck, Circle, CircleCheck, CircleX, ClipboardCheck, Hourglass, type LucideIcon, Package, Stethoscope, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -33,22 +34,23 @@ const STATUS_TONE: Record<WorkOrderStatus, Tone> = {
   closed: "neutral",
   cancelled: "danger",
 };
-const STATUS_GLYPH: Record<WorkOrderStatus, string> = {
-  new: "○",
-  diagnostics: "◔",
-  awaiting_approval: "◑",
-  in_progress: "●",
-  awaiting_parts: "❚❚",
-  quality_check: "◕",
-  ready: "✓",
-  closed: "✓✓",
-  cancelled: "✕",
+const STATUS_ICON: Record<WorkOrderStatus, LucideIcon> = {
+  new: Circle,
+  diagnostics: Stethoscope,
+  awaiting_approval: Hourglass,
+  in_progress: Wrench,
+  awaiting_parts: Package,
+  quality_check: ClipboardCheck,
+  ready: CircleCheck,
+  closed: CheckCheck,
+  cancelled: CircleX,
 };
 
 export function StatusBadge({ status }: { status: WorkOrderStatus }) {
+  const Icon = STATUS_ICON[status];
   return (
     <Badge tone={STATUS_TONE[status]}>
-      <span aria-hidden="true" className="mr-1">{STATUS_GLYPH[status]}</span>
+      <Icon aria-hidden="true" className="mr-1 inline-block size-3.5 shrink-0 align-[-2px]" />
       {STATUS_LABELS[status]}
     </Badge>
   );

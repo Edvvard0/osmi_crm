@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { type ClientInput, useClientById, useCreateClient } from "@/features/clients/api";
 import { DuplicateNotice } from "@/pages/clients/ClientFormPage";
@@ -76,6 +76,15 @@ export function ClientVehiclePicker({ client, onClient, vehicleId, onVehicle, cl
   const needVehicleForm = !!client && mode === "none" && detail.isSuccess && vehicles.length === 0;
   const showVehicleForm = mode === "newVehicle" || needVehicleForm;
 
+  // У клиента одно авто — подставляем его сразу (один раз на выбранного клиента, ручной выбор не перебиваем).
+  const autoPicked = useRef<string | null>(null);
+  const onlyVehicleId = fetched.length === 1 ? fetched[0]?.id : undefined;
+  useEffect(() => {
+    if (!client || !onlyVehicleId || vehicleId || autoPicked.current === client.id) return;
+    autoPicked.current = client.id;
+    onVehicle(onlyVehicleId);
+  }, [client, onlyVehicleId, vehicleId, onVehicle]);
+
   function reset() {
     setMode("none");
     setName("");
@@ -86,6 +95,7 @@ export function ClientVehiclePicker({ client, onClient, vehicleId, onVehicle, cl
   }
 
   function pick(c: PickedClient) {
+    autoPicked.current = null;
     onClient(c);
     onVehicle("");
     setCreated([]);

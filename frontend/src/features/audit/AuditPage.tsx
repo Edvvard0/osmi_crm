@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { ArrowRight, ChevronRight } from "lucide-react";
 
 import { safeZone } from "@/features/appointments/time";
 import { useLocations } from "@/features/locations/api";
@@ -167,7 +168,7 @@ function Row({ e, actionLabel, typeLabel }: { e: AuditEntry; actionLabel: (v: st
           onClick={() => setOpen((v) => !v)}
           className="justify-self-start rounded px-2 py-1 text-muted hover:text-fg md:justify-self-end"
         >
-          <span aria-hidden className={clsx("inline-block transition-transform", open && "rotate-90")}>›</span>
+          <ChevronRight size={16} aria-hidden="true" className={clsx("shrink-0 transition-transform", open && "rotate-90")} />
         </button>
       </div>
       {open && (
@@ -177,7 +178,7 @@ function Row({ e, actionLabel, typeLabel }: { e: AuditEntry; actionLabel: (v: st
               {changes.map(([k, v]) => (
                 <div key={k} className="contents">
                   <dt className="break-words text-muted">{k}</dt>
-                  <dd className="break-words">{isDiff(v) ? <>{fmtVal(v.old)} → {fmtVal(v.new)}</> : fmtVal(v)}</dd>
+                  <dd className="break-words">{isDiff(v) ? <>{fmtVal(v.old)} <ArrowRight aria-label="стало" className="mx-0.5 inline-block size-3.5 align-[-2px] text-muted" /> {fmtVal(v.new)}</> : fmtVal(v)}</dd>
                 </div>
               ))}
             </dl>

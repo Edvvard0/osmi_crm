@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { TrendingDown, TrendingUp } from "lucide-react";
 
 import { useActiveLocation } from "@/features/locations/api";
 import { Skeleton, fmtDateTime, useTzOf } from "@/features/orders/ui";
@@ -41,8 +42,10 @@ function KpiTile({ def, kpi, to }: { def: (typeof KPI_DEFS)[number]; kpi: Kpi; t
         <span className="block text-sm text-muted">{def.label}</span>
         <span className="mt-1 block break-words text-xl font-semibold">{kpiValue(kpi, kpi.value)}</span>
         <span className="mt-1 flex flex-wrap items-baseline gap-x-2 text-xs">
-          <span className={clsx(d.sign > 0 && "text-success", d.sign < 0 && "text-danger", d.sign === 0 && "text-muted")}>
+          <span className={clsx("inline-flex items-center gap-0.5", d.sign > 0 && "text-success", d.sign < 0 && "text-danger", d.sign === 0 && "text-muted")}>
             <span className="sr-only">{d.sign > 0 ? "Рост: " : d.sign < 0 ? "Снижение: " : "Изменение: "}</span>
+            {d.sign > 0 && <TrendingUp aria-hidden="true" className="size-3.5" />}
+            {d.sign < 0 && <TrendingDown aria-hidden="true" className="size-3.5" />}
             {d.text}
           </span>
           <span className="text-muted">было {kpiValue(kpi, kpi.previous)}</span>

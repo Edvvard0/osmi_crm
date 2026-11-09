@@ -46,6 +46,7 @@ const BASE_FIELD_MESSAGES: Record<string, string> = {
   weak_password: "Слишком простой пароль",
   password_too_short: "Пароль слишком короткий",
   unique_violation: "Такое значение уже используется",
+  markup_not_allowed: "Нельзя использовать символы < и >",
 };
 
 const BASE_FIELD_FALLBACKS: Record<string, string> = {
@@ -161,6 +162,13 @@ export function codeForStatus(status: number): string {
 export function toAppError(e: unknown): AppError {
   if (e instanceof AppError) return e;
   return new AppError("unknown");
+}
+
+/** Ошибка поля с подсказкой формы: известный код (например, markup_not_allowed) важнее общей подсказки. */
+export function fieldText(e: AppError | null | undefined, name: string, hint: string): string | undefined {
+  const v = e?.fields[name];
+  if (v === undefined) return undefined;
+  return v === "required" || v === "invalid" ? hint : (FIELD_MESSAGES[v] ?? hint);
 }
 
 /** Текст ошибки под полем формы (серверный текст не используется). */

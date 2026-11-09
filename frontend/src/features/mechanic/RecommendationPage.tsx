@@ -1,9 +1,10 @@
 import clsx from "clsx";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 import { NotFoundPage } from "@/pages/ErrorPage";
-import { fieldMessage, toAppError } from "@/shared/api/errors";
+import { fieldMessage, fieldText, toAppError } from "@/shared/api/errors";
 import { useToast } from "@/shared/ui/toast";
 import { Alert, Button, Textarea } from "@/shared/ui/ui";
 
@@ -46,7 +47,7 @@ export function RecommendationPage() {
   return (
     <form onSubmit={submit} className="mx-auto max-w-xl space-y-5" noValidate>
       <div>
-        <Link to={`/tasks/${encodeURIComponent(itemId)}`} className="text-sm text-muted">← К работе</Link>
+        <Link to={`/tasks/${encodeURIComponent(itemId)}`} className="inline-flex items-center gap-1 text-sm text-muted"><ArrowLeft aria-hidden="true" className="size-4" />К работе</Link>
         <h1 className="mt-1 text-xl font-semibold">Рекомендация</h1>
         <p className="text-sm text-muted">{task.data.vehicle.make} {task.data.vehicle.model} · {task.data.vehicle.plate_number ?? "без номера"}</p>
       </div>
@@ -56,7 +57,7 @@ export function RecommendationPage() {
         value={text}
         maxLength={1000}
         onChange={(e) => setText(e.target.value)}
-        error={err?.fields.text ? "Рекомендация: от 1 до 1000 символов" : undefined}
+        error={fieldText(err, "text", "Рекомендация: от 1 до 1000 символов")}
       />
       <fieldset>
         <legend className="mb-1 text-sm text-muted">Приоритет</legend>

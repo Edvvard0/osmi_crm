@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 import { ClientVehiclePicker, type PickedClient } from "@/features/appointments/ClientVehiclePicker";
 import { useClientById } from "@/features/clients/api";
@@ -144,7 +145,7 @@ export function OrderWizardPage() {
 
   return (
     <form onSubmit={submit} className="mx-auto max-w-3xl space-y-5" aria-label="Новый заказ-наряд">
-      <Link to="/orders" className="text-sm text-muted underline">← Заказ-наряды</Link>
+      <Link to="/orders" className="inline-flex items-center gap-1 text-sm text-muted underline"><ArrowLeft aria-hidden="true" className="size-4" />Заказ-наряды</Link>
       <h1 className="text-xl font-semibold">Новый заказ</h1>
 
       {apt.data && (

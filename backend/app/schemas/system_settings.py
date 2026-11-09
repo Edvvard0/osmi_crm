@@ -93,7 +93,9 @@ class SettingsPatch(Strict):
             raise _bad()
         if not all(_is_num(h) and 0.5 <= h <= 24 and (h * 2) == int(h * 2) for h in hours):
             raise _bad()
-        if not all(isinstance(a, int) and not isinstance(a, bool) and 1 <= a <= 1000 for a in actions):
+        if not all(
+            isinstance(a, int) and not isinstance(a, bool) and 1 <= a <= 1000 for a in actions
+        ):
             raise _bad()
         if not (_triple_increasing(hours) and _triple_increasing(actions)):
             raise _bad()

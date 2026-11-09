@@ -1,4 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
+import clsx from "clsx";
+import { Check, Circle } from "lucide-react";
 import { type FormEvent, useState } from "react";
 
 import { useMe } from "@/features/auth/AuthProvider";
@@ -92,10 +94,12 @@ function PasswordSection() {
         <PasswordInput label="Текущий пароль" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} error={currentErr} />
         <PasswordInput label="Новый пароль" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} error={newErr} />
         <ul className="space-y-0.5 text-xs text-muted" aria-label="Требования к паролю">
-          <li className={longEnough ? "text-success" : undefined}>
-            {longEnough ? "✓" : "○"} Не короче {MIN_LEN} символов
+          <li className={clsx("flex items-center gap-1", longEnough && "text-success")}>
+            <ReqIcon ok={longEnough} /> Не короче {MIN_LEN} символов
           </li>
-          <li className={notLogin ? "text-success" : undefined}>{notLogin ? "✓" : "○"} Не совпадает с логином</li>
+          <li className={clsx("flex items-center gap-1", notLogin && "text-success")}>
+            <ReqIcon ok={notLogin} /> Не совпадает с логином
+          </li>
         </ul>
         <PasswordInput label="Повторите новый пароль" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)} error={localErr ?? undefined} />
         {generalErr && <Alert>{generalErr}</Alert>}
@@ -128,4 +132,9 @@ function AppearanceSection() {
       </Select>
     </section>
   );
+}
+
+function ReqIcon({ ok }: { ok: boolean }) {
+  const Icon = ok ? Check : Circle;
+  return <Icon aria-hidden="true" className="size-3.5 shrink-0" />;
 }

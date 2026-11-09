@@ -39,7 +39,9 @@ async def seed(db: AsyncSession) -> SimpleNamespace:
     manager_b = await make_user(db, Role.manager, locations=[b])
     director = await make_user(db, Role.director)
     mechanic = await make_user(db, Role.mechanic, locations=[a])
-    client = Client(client_type="person", full_name="Иван Петров", phone="+79" + str(uuid.uuid4().int)[:9])
+    client = Client(
+        client_type="person", full_name="Иван Петров", phone="+79" + str(uuid.uuid4().int)[:9]
+    )
     db.add(client)
     await db.flush()
     vehicle = Vehicle(client_id=client.id, make="Kia", model="Rio")
@@ -73,8 +75,13 @@ async def make_order(
     if status in ("ready", "closed"):
         db.add(
             WorkOrderItem(
-                work_order_id=order.id, name="Работа", department="service", quantity=Decimal(1),
-                unit_price=Decimal(total), total=Decimal(total), status="done",
+                work_order_id=order.id,
+                name="Работа",
+                department="service",
+                quantity=Decimal(1),
+                unit_price=Decimal(total),
+                total=Decimal(total),
+                status="done",
             )  # fmt: skip
         )
     await db.commit()
@@ -82,7 +89,8 @@ async def make_order(
 
 
 async def pay(
-    api: httpx.AsyncClient, user: User, order: WorkOrder, amount: str, method: str = "cash", **kw: object
+    api: httpx.AsyncClient, user: User, order: WorkOrder, amount: str, method: str = "cash",
+    **kw: object,
 ) -> httpx.Response:  # fmt: skip
     return await api.post(
         f"{API}/work-orders/{order.id}/payments",
@@ -115,9 +123,7 @@ async def test_payment_full_and_partial(api, db) -> None:
 
     lst = await api.get(f"{API}/work-orders/{order.id}/payments", headers=token(s.manager))
     assert [p["amount"] for p in lst.json()] == ["400.00", "600.00"]
-    audit = (
-        await db.scalars(select(AuditLog).where(AuditLog.entity_type == "payment"))
-    ).all()
+    audit = (await db.scalars(select(AuditLog).where(AuditLog.entity_type == "payment"))).all()
     mine = [a for a in audit if a.changes and a.changes.get("order_number") == order.number]
     assert len(mine) == 2 and mine[0].action == "create"
     assert set(mine[0].changes) >= {"amount", "method", "order_number"}
@@ -177,7 +183,9 @@ async def test_payment_permissions(api, db) -> None:
     r = await api.get(f"{API}/work-orders/{order.id}/payments", headers=token(s.manager_b))
     assert r.status_code == 404
     assert (await pay(api, s.director, order, "100.00")).status_code == 201
-    r = await api.post(f"{API}/work-orders/{order.id}/payments", json={"amount": "1.00", "method": "cash"})
+    r = await api.post(
+        f"{API}/work-orders/{order.id}/payments", json={"amount": "1.00", "method": "cash"}
+    )
     assert r.status_code == 401
 
 
@@ -196,7 +204,9 @@ async def test_refund_flow(api, db) -> None:
     r = await api.post(url(p["id"]), json={"comment": "ab"}, headers=token(s.director))
     assert r.status_code == 422
     r = await api.post(
-        url(p["id"]), json={"amount": "1000.01", "comment": "слишком много"}, headers=token(s.director)
+        url(p["id"]),
+        json={"amount": "1000.01", "comment": "слишком много"},
+        headers=token(s.director),
     )
     assert r.status_code == 409 and r.json()["error"]["code"] == "refund_exceeds_payment"
     assert r.json()["error"]["details"] == {"refundable": "1000.00"}
@@ -215,7 +225,9 @@ async def test_refund_flow(api, db) -> None:
     again = await api.post(url(p["id"]), json=body, headers=token(s.director))
     assert again.status_code == 200 and again.json()["payment"]["id"] == refund["id"]
 
-    r = await api.post(url(refund["id"]), json={"comment": "возврат возврата"}, headers=token(s.director))
+    r = await api.post(
+        url(refund["id"]), json={"comment": "возврат возврата"}, headers=token(s.director)
+    )
     assert r.status_code == 409 and r.json()["error"]["code"] == "invalid_state"
 
     r = await api.post(url(p["id"]), json={"comment": "остаток"}, headers=token(s.director))
@@ -230,7 +242,11 @@ async def test_refund_flow(api, db) -> None:
     assert [x["payment_type"] for x in lst] == ["payment", "refund", "refund"]
     assert lst[0]["refundable"] == "0.00"
     acts = (
-        await db.scalars(select(AuditLog).where(AuditLog.action == "refund", AuditLog.entity_id == uuid.UUID(refund["id"])))
+        await db.scalars(
+            select(AuditLog).where(
+                AuditLog.action == "refund", AuditLog.entity_id == uuid.UUID(refund["id"])
+            )
+        )
     ).all()
     assert len(acts) == 1 and acts[0].changes["reason"] == "возврат части"
     assert acts[0].changes["refund_of_id"] == p["id"]
@@ -251,8 +267,12 @@ async def test_recalc_payment_status(db) -> None:
     assert (order.paid_total, order.payment_status) == (Decimal("0.00"), "unpaid")
     db.add(
         Payment(
-            work_order_id=order.id, location_id=order.location_id, payment_type="payment",
-            amount=Decimal("700.00"), method="cash", accepted_by=s.director.id,
+            work_order_id=order.id,
+            location_id=order.location_id,
+            payment_type="payment",
+            amount=Decimal("700.00"),
+            method="cash",
+            accepted_by=s.director.id,
         )  # fmt: skip
     )
     order.total = Decimal("800.00")
@@ -277,21 +297,37 @@ async def test_expense_categories(api, db) -> None:
     assert r.status_code == 200
     names = [c["name"] for c in r.json()]
     assert {"Аренда", "Прочее", "Налоги и сборы"} <= set(names) and names == sorted(names)
-    assert (await api.get(f"{API}/expense-categories", headers=token(s.mechanic))).status_code == 403
-    r = await api.post(f"{API}/expense-categories", json={"name": "Охрана"}, headers=token(s.manager))
+    assert (
+        await api.get(f"{API}/expense-categories", headers=token(s.mechanic))
+    ).status_code == 403
+    r = await api.post(
+        f"{API}/expense-categories", json={"name": "Охрана"}, headers=token(s.manager)
+    )
     assert r.status_code == 403
-    r = await api.post(f"{API}/expense-categories", json={"name": "Охрана"}, headers=token(s.director))
+    r = await api.post(
+        f"{API}/expense-categories", json={"name": "Охрана"}, headers=token(s.director)
+    )
     assert r.status_code == 201 and r.json()["is_active"] is True
     cid = r.json()["id"]
-    r = await api.post(f"{API}/expense-categories", json={"name": "охрана"}, headers=token(s.director))
+    r = await api.post(
+        f"{API}/expense-categories", json={"name": "охрана"}, headers=token(s.director)
+    )
     assert r.status_code == 409 and r.json()["error"]["code"] == "unique_violation"
-    r = await api.patch(f"{API}/expense-categories/{cid}", json={"is_active": False, "name": "Охрана 2"}, headers=token(s.director))
+    r = await api.patch(
+        f"{API}/expense-categories/{cid}",
+        json={"is_active": False, "name": "Охрана 2"},
+        headers=token(s.director),
+    )
     assert r.status_code == 200 and r.json() == {"id": cid, "name": "Охрана 2", "is_active": False}
-    r = await api.patch(f"{API}/expense-categories/{cid}", json={"name": "аренда"}, headers=token(s.director))
+    r = await api.patch(
+        f"{API}/expense-categories/{cid}", json={"name": "аренда"}, headers=token(s.director)
+    )
     assert r.status_code == 409
     active = await api.get(f"{API}/expense-categories", headers=token(s.manager))
     assert cid not in [c["id"] for c in active.json()]
-    allc = await api.get(f"{API}/expense-categories?include_inactive=true", headers=token(s.manager))
+    allc = await api.get(
+        f"{API}/expense-categories?include_inactive=true", headers=token(s.manager)
+    )
     assert cid in [c["id"] for c in allc.json()]
     # неактивная категория недоступна для новых расходов
     r = await api.post(
@@ -335,7 +371,9 @@ async def test_expense_rules(api, db) -> None:
     assert e["amount"] == "150.50" and e["cancelled_at"] is None
     assert e["created_by"]["id"] == str(s.manager.id) and e["category"]["name"] == "Аренда"
     # окно менеджера: сегодня и 3 суток назад можно, 4 суток назад — нельзя
-    assert (await add_expense(api, s.manager, s, day=today() - timedelta(days=3))).status_code == 201
+    assert (
+        await add_expense(api, s.manager, s, day=today() - timedelta(days=3))
+    ).status_code == 201
     r = await add_expense(api, s.manager, s, day=today() - timedelta(days=4))
     assert r.status_code == 422 and "expense_date" in r.json()["error"]["fields"]
     r = await add_expense(api, s.director, s, day=today() - timedelta(days=40))
@@ -358,16 +396,23 @@ async def test_expense_rules(api, db) -> None:
 async def test_expense_list_and_cancel(api, db) -> None:
     s = await seed(db)
     e1 = (await add_expense(api, s.manager, s, "100.00", "cash")).json()
-    e2 = (await add_expense(api, s.manager, s, "50.25", "card", day=today() - timedelta(days=1))).json()
+    e2 = (
+        await add_expense(api, s.manager, s, "50.25", "card", day=today() - timedelta(days=1))
+    ).json()
     await add_expense(api, s.manager_b, s, "999.00", loc=s.b)
     r = await api.get(f"{API}/expenses", headers=token(s.manager))
     assert r.status_code == 200
     assert [x["id"] for x in r.json()["items"]] == [e1["id"], e2["id"]]  # дата по убыванию
     assert r.json()["total"] == 2 and r.json()["total_amount"] == "150.25"
-    assert (await api.get(f"{API}/expenses?location_id={s.b.id}", headers=token(s.manager))).status_code == 404
+    assert (
+        await api.get(f"{API}/expenses?location_id={s.b.id}", headers=token(s.manager))
+    ).status_code == 404
     r = await api.get(f"{API}/expenses?method=card", headers=token(s.manager))
     assert r.json()["total"] == 1 and r.json()["total_amount"] == "50.25"
-    r = await api.get(f"{API}/expenses?location_id={s.a.id}&date_from=2020-01-01&date_to=2022-01-01", headers=token(s.director))
+    r = await api.get(
+        f"{API}/expenses?location_id={s.a.id}&date_from=2020-01-01&date_to=2022-01-01",
+        headers=token(s.director),
+    )
     assert r.status_code == 422
     assert (await api.get(f"{API}/expenses", headers=token(s.mechanic))).status_code == 403
 
@@ -375,7 +420,9 @@ async def test_expense_list_and_cancel(api, db) -> None:
     assert (await api.post(cancel, json={}, headers=token(s.manager))).status_code == 403
     r = await api.post(cancel, json={"reason": "ошибка ввода"}, headers=token(s.director))
     assert r.status_code == 200
-    assert r.json()["cancelled_at"] is not None and r.json()["cancelled_by"]["id"] == str(s.director.id)
+    assert r.json()["cancelled_at"] is not None and r.json()["cancelled_by"]["id"] == str(
+        s.director.id
+    )
     assert (await api.post(cancel, json={}, headers=token(s.director))).status_code == 409
     r = await api.get(f"{API}/expenses", headers=token(s.manager))
     assert r.json()["total"] == 1 and r.json()["total_amount"] == "50.25"
@@ -402,7 +449,10 @@ async def test_cash_report_and_operations(api, db) -> None:
     rep = await api.get(f"{API}/cash/report?location_id={s.a.id}", headers=token(s.manager))
     assert rep.status_code == 200, rep.text
     d = rep.json()
-    assert d["timezone"] == "Europe/Moscow" and d["date_from"] == d["date_to"] == today().date().isoformat()
+    assert (
+        d["timezone"] == "Europe/Moscow"
+        and d["date_from"] == d["date_to"] == today().date().isoformat()
+    )
     assert [m["method"] for m in d["payments"]] == ["cash", "card", "transfer", "other"]
     cash = d["payments"][0]
     assert (cash["received"], cash["refunded"], cash["net"]) == ("600.00", "100.00", "500.00")
@@ -429,27 +479,51 @@ async def test_cash_report_and_operations(api, db) -> None:
     assert refund_op["signed_amount"] == "-100.00" and refund_op["refundable"] is None
     pay_op = next(i for i in items if i["id"] == p_cash["id"])
     assert pay_op["refundable"] == "500.00" and pay_op["order"]["number"] == o1.number
-    only = await api.get(f"{API}/cash/operations?location_id={s.a.id}&kind=expense&method=card", headers=token(s.manager))
+    only = await api.get(
+        f"{API}/cash/operations?location_id={s.a.id}&kind=expense&method=card",
+        headers=token(s.manager),
+    )
     assert only.json()["total"] == 1 and only.json()["items"][0]["category"]["name"] == "Реклама"
-    page = await api.get(f"{API}/cash/operations?location_id={s.a.id}&limit=3&offset=5", headers=token(s.manager))
+    page = await api.get(
+        f"{API}/cash/operations?location_id={s.a.id}&limit=3&offset=5", headers=token(s.manager)
+    )
     assert len(page.json()["items"]) == 2 and page.json()["total"] == 7
 
     # другой период — пусто, нули
-    old = await api.get(f"{API}/cash/report?location_id={s.a.id}&date_from=2020-01-01&date_to=2020-01-02", headers=token(s.manager))
+    old = await api.get(
+        f"{API}/cash/report?location_id={s.a.id}&date_from=2020-01-01&date_to=2020-01-02",
+        headers=token(s.manager),
+    )
     assert old.json()["net_total"] == "0.00" and old.json()["expenses_by_category"] == []
 
     # права и ошибки параметров
-    assert (await api.get(f"{API}/cash/report", headers=token(s.manager))).json()["error"]["fields"] == {"location_id": "required"}
-    assert (await api.get(f"{API}/cash/report?location_id={s.b.id}", headers=token(s.manager))).status_code == 404
-    assert (await api.get(f"{API}/cash/report?location_id={s.a.id}", headers=token(s.mechanic))).status_code == 403
-    assert (await api.get(f"{API}/cash/operations?location_id={s.a.id}", headers=token(s.mechanic))).status_code == 403
-    r = await api.get(f"{API}/cash/report?location_id={s.a.id}&date_from=2026-01-10&date_to=2026-01-01", headers=token(s.director))
+    assert (await api.get(f"{API}/cash/report", headers=token(s.manager))).json()["error"][
+        "fields"
+    ] == {"location_id": "required"}
+    assert (
+        await api.get(f"{API}/cash/report?location_id={s.b.id}", headers=token(s.manager))
+    ).status_code == 404
+    assert (
+        await api.get(f"{API}/cash/report?location_id={s.a.id}", headers=token(s.mechanic))
+    ).status_code == 403
+    assert (
+        await api.get(f"{API}/cash/operations?location_id={s.a.id}", headers=token(s.mechanic))
+    ).status_code == 403
+    r = await api.get(
+        f"{API}/cash/report?location_id={s.a.id}&date_from=2026-01-10&date_to=2026-01-01",
+        headers=token(s.director),
+    )
     assert r.status_code == 422 and "date_to" in r.json()["error"]["fields"]
-    r = await api.get(f"{API}/cash/report?location_id={s.a.id}&date_from=2026-01-01&date_to=2026-06-01", headers=token(s.director))
+    r = await api.get(
+        f"{API}/cash/report?location_id={s.a.id}&date_from=2026-01-01&date_to=2026-06-01",
+        headers=token(s.director),
+    )
     assert r.status_code == 422
     # огромный offset — 422, а не переполнение bigint в БД (500)
     for path in ("cash/operations", "expenses"):
-        r = await api.get(f"{API}/{path}?location_id={s.a.id}&offset={10**30}", headers=token(s.director))
+        r = await api.get(
+            f"{API}/{path}?location_id={s.a.id}&offset={10**30}", headers=token(s.director)
+        )
         assert r.status_code == 422 and "offset" in r.json()["error"]["fields"], path
 
 
@@ -483,14 +557,26 @@ async def test_close_and_cancel_rules(api, db) -> None:
     assert r.json()["refunded_total"] == "0.00" and r.json()["payment_status"] == "partial"
     forced = (
         await db.scalars(
-            select(AuditLog).where(AuditLog.entity_type == "work_order", AuditLog.entity_id == order.id, AuditLog.action == "status_change")
+            select(AuditLog).where(
+                AuditLog.entity_type == "work_order",
+                AuditLog.entity_id == order.id,
+                AuditLog.action == "status_change",
+            )
         )
     ).all()
-    assert forced and forced[-1].changes["forced"] is True and forced[-1].changes["balance_due"] == "700.00"
+    assert (
+        forced
+        and forced[-1].changes["forced"] is True
+        and forced[-1].changes["balance_due"] == "700.00"
+    )
 
     # полностью оплаченный закрывается без force_close
     paid = await make_order(db, s, "200.00", status="ready")
     await pay(api, s.manager, paid, "200.00")
     await db.refresh(paid)
-    r = await api.post(f"{API}/work-orders/{paid.id}/status", json={"version": paid.version, "status": "closed"}, headers=token(s.manager))
+    r = await api.post(
+        f"{API}/work-orders/{paid.id}/status",
+        json={"version": paid.version, "status": "closed"},
+        headers=token(s.manager),
+    )
     assert r.status_code == 200 and r.json()["payment_status"] == "paid"

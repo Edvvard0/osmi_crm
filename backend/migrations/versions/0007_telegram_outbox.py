@@ -56,7 +56,9 @@ def upgrade() -> None:
         sa.Column("text", sa.String(4096), nullable=False),
         sa.Column("status", sa.String(10), nullable=False, server_default=sa.text("'pending'")),
         sa.Column("attempts", sa.SmallInteger(), nullable=False, server_default=sa.text("0")),
-        sa.Column("next_attempt_at", sa.DateTime(timezone=True), nullable=False, server_default=NOW),
+        sa.Column(
+            "next_attempt_at", sa.DateTime(timezone=True), nullable=False, server_default=NOW
+        ),
         sa.Column("last_error", sa.String(500)),
         sa.Column("dedup_key", sa.String(120)),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=NOW),
@@ -83,8 +85,9 @@ def upgrade() -> None:
     )
 
     for table in TABLES:
+        # SQL собирается только из констант модуля, внешнего ввода нет.
         op.execute(
-            "DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'crm_app') THEN "
+            "DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'crm_app') THEN "  # noqa: S608
             f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO crm_app; END IF; END $$"
         )
     op.execute(

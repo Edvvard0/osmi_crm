@@ -18,8 +18,9 @@ ZERO = sa.text("0")
 
 
 def _grant(tables: str, privileges: str) -> None:
+    # SQL собирается только из констант модуля, внешнего ввода нет.
     op.execute(
-        "DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'crm_app') THEN "
+        "DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'crm_app') THEN "  # noqa: S608
         f"GRANT {privileges} ON {tables} TO crm_app; END IF; END $$"
     )
 
@@ -62,11 +63,15 @@ def upgrade() -> None:
         _money("discount_total"),
         _money("total"),
         _money("paid_total"),
-        sa.Column("payment_status", sa.String(10), nullable=False, server_default=sa.text("'unpaid'")),
+        sa.Column(
+            "payment_status", sa.String(10), nullable=False, server_default=sa.text("'unpaid'")
+        ),
         sa.Column("version", sa.Integer(), nullable=False, server_default=sa.text("1")),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=NOW),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=NOW),
-        sa.CheckConstraint("department IN ('service','detailing','mixed')", name="ck_work_orders_dept"),
+        sa.CheckConstraint(
+            "department IN ('service','detailing','mixed')", name="ck_work_orders_dept"
+        ),
         sa.CheckConstraint(
             "status IN ('new','diagnostics','awaiting_approval','in_progress',"
             "'awaiting_parts','quality_check','ready','closed','cancelled')",
@@ -118,7 +123,9 @@ def upgrade() -> None:
         sa.Column("sort_order", sa.SmallInteger(), nullable=False, server_default=ZERO),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=NOW),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=NOW),
-        sa.CheckConstraint("department IN ('service','detailing')", name="ck_work_order_items_dept"),
+        sa.CheckConstraint(
+            "department IN ('service','detailing')", name="ck_work_order_items_dept"
+        ),
         sa.CheckConstraint("quantity > 0", name="ck_work_order_items_quantity"),
         sa.CheckConstraint("unit_price >= 0", name="ck_work_order_items_price"),
         sa.CheckConstraint(

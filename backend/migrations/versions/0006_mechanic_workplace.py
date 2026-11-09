@@ -16,8 +16,9 @@ NOW = sa.text("now()")
 
 
 def _grant(tables: str, privileges: str) -> None:
+    # SQL собирается только из констант модуля, внешнего ввода нет.
     op.execute(
-        "DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'crm_app') THEN "
+        "DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'crm_app') THEN "  # noqa: S608
         f"GRANT {privileges} ON {tables} TO crm_app; END IF; END $$"
     )
 

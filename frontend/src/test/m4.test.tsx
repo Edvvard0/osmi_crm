@@ -476,6 +476,16 @@ describe("создание записи", () => {
     await u.selectOptions(await dlg.findByLabelText("Автомобиль"), "v1");
   }
 
+  it("у клиента одно авто — оно подставляется сразу после выбора клиента", async () => {
+    world({});
+    open();
+    const u = userEvent.setup();
+    const dlg = await openSlot(u);
+    await u.type(dlg.getByLabelText("Поиск клиента"), "Пет");
+    await u.click(await dlg.findByRole("button", { name: /Иван Петров/ }));
+    await waitFor(() => expect(dlg.getByLabelText("Автомобиль")).toHaveValue("v1"));
+  });
+
   it("клик по пустому слоту открывает форму с постом и временем; создание отправляет ISO с поясом точки", async () => {
     const { f, state } = world({
       over: {

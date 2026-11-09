@@ -105,7 +105,9 @@ def _csv(raw: str | None, allowed: frozenset[str] | set[str], name: str) -> list
     return values or None
 
 
-def _period(date_from: date | None, date_to: date | None, tz: ZoneInfo) -> tuple[datetime, datetime]:
+def _period(
+    date_from: date | None, date_to: date | None, tz: ZoneInfo
+) -> tuple[datetime, datetime]:
     if date_to is None:
         date_to = datetime.now(tz).date()
     if date_from is None:
@@ -118,6 +120,7 @@ def _period(date_from: date | None, date_to: date | None, tz: ZoneInfo) -> tuple
 
 
 # ---------- ссылки и метки объектов ----------
+
 
 def _change_value(changes: dict[str, Any] | None, key: str) -> Any:
     """Значение ключа: простое или `new` из пары {old, new}."""
@@ -270,7 +273,7 @@ def _row_to_entry(
         id=log_row.id,
         created_at=log_row.created_at,
         user=UserRef(id=row.user_id, full_name=row.user_name) if row.user_id else None,
-        action=log_row.action,  # type: ignore[arg-type]
+        action=log_row.action,
         entity_type=entity_type,
         entity_id=log_row.entity_id,
         entity_label=label,
@@ -284,7 +287,7 @@ def _row_to_entry(
     )
 
 
-def _base_select() -> Select[Any]:
+def _base_select() -> Select[AuditLog, uuid.UUID, str, uuid.UUID, str, str]:
     return (
         select(
             AuditLog,
@@ -366,4 +369,3 @@ async def get_audit_entry(session: AsyncSession, entry_id: int) -> AuditEntry:
     if row is None:
         raise AppError(404, "not_found")
     return (await _entries(session, [row]))[0]
-

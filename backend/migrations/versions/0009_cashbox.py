@@ -74,16 +74,17 @@ def upgrade() -> None:
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
     )
     op.create_index(
-        "uq_expense_categories_lower_name", "expense_categories", [sa.text("lower(name)")], unique=True
+        "uq_expense_categories_lower_name",
+        "expense_categories",
+        [sa.text("lower(name)")],
+        unique=True,
     )
 
     op.create_table(
         "expenses",
         sa.Column("id", sa.Uuid(), primary_key=True),
         sa.Column("location_id", sa.Uuid(), sa.ForeignKey("locations.id"), nullable=False),
-        sa.Column(
-            "category_id", sa.Uuid(), sa.ForeignKey("expense_categories.id"), nullable=False
-        ),
+        sa.Column("category_id", sa.Uuid(), sa.ForeignKey("expense_categories.id"), nullable=False),
         sa.Column("amount", sa.Numeric(12, 2), nullable=False),
         sa.Column("method", sa.String(10), nullable=False),
         sa.Column("expense_date", sa.Date(), nullable=False),

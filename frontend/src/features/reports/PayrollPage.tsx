@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Fragment, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -190,7 +191,7 @@ export function PayrollPage() {
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <div role="group" aria-label="Месяц" className="flex items-center gap-1">
-          <Button variant="secondary" aria-label="Предыдущий месяц" onClick={() => { setMonth(shiftMonth(m, -1)); setOpen(null); }}>‹</Button>
+          <Button variant="secondary" aria-label="Предыдущий месяц" onClick={() => { setMonth(shiftMonth(m, -1)); setOpen(null); }}><ChevronLeft size={18} aria-hidden="true" /></Button>
           <label className="px-2 text-sm font-medium">
             <span className="sr-only">Месяц ведомости</span>
             <input
@@ -201,7 +202,7 @@ export function PayrollPage() {
               className="min-h-10 rounded border border-border bg-surface px-2 text-fg"
             />
           </label>
-          <Button variant="secondary" aria-label="Следующий месяц" disabled={next > currentMonth} onClick={() => { setMonth(next); setOpen(null); }}>›</Button>
+          <Button variant="secondary" aria-label="Следующий месяц" disabled={next > currentMonth} onClick={() => { setMonth(next); setOpen(null); }}><ChevronRight size={18} aria-hidden="true" /></Button>
         </div>
         <p className="text-sm text-muted">{formatMonth(m)}</p>
         <div className="ml-auto flex flex-wrap items-center gap-2">

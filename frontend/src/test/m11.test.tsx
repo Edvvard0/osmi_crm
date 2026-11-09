@@ -76,7 +76,8 @@ describe("журнал действий D-08", () => {
     expect(formatAuditTime("2026-11-10T21:30:00Z", "Europe/Moscow")).toContain("00:30");
 
     await user.click(screen.getByRole("button", { name: "Показать подробности" }));
-    expect(screen.getByText("new → in_progress")).toBeInTheDocument();
+    const diff = screen.getByLabelText("стало").closest("dd");
+    expect(diff?.textContent?.replace(/\s+/g, " ").trim()).toBe("new in_progress");
     expect(screen.getByText("***")).toBeInTheDocument();
     expect(screen.getByText(/IP: 10\.0\.0\.1/)).toBeInTheDocument();
 

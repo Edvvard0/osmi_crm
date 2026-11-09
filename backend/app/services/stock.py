@@ -256,7 +256,7 @@ def _movement_read(row: Any) -> StockMovementRead:
         id=m.id,
         location_id=m.location_id,
         part=PartMini(id=m.part_id, sku=row[1], name=row[2], unit=row[3]),
-        movement_type=m.movement_type,  # type: ignore[arg-type]
+        movement_type=m.movement_type,
         quantity=m.quantity,
         unit_cost=m.unit_cost,
         total=money(m.quantity * m.unit_cost),

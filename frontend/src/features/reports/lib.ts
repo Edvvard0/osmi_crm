@@ -55,7 +55,7 @@ export function formatCell(v: string | null | undefined, kind: ReportColumnKind)
   }
 }
 
-/** Изменение к прошлому периоду: «▲ 12,50 %» / «▼ 3,20 п.п.»; null → «—». */
+/** Изменение к прошлому периоду: «12,50 %» / «3,20 п.п.» и знак (стрелку рисует интерфейс); null → «—». */
 export function formatDelta(kind: KpiKind, delta: string | null): { text: string; sign: -1 | 0 | 1 } {
   if (delta === null || delta === undefined) return { text: "—", sign: 0 };
   const m = /^(-?)(\d+)(?:\.(\d+))?$/.exec(delta.trim());
@@ -64,7 +64,7 @@ export function formatDelta(kind: KpiKind, delta: string | null): { text: string
   const zero = /^0+,0+$/.test(abs);
   const unit = kind === "percent" ? "п.п." : "%";
   if (zero) return { text: `0${NBSP}${unit}`, sign: 0 };
-  return m[1] ? { text: `▼${NBSP}${abs}${NBSP}${unit}`, sign: -1 } : { text: `▲${NBSP}${abs}${NBSP}${unit}`, sign: 1 };
+  return { text: `${abs}${NBSP}${unit}`, sign: m[1] ? -1 : 1 };
 }
 
 /** Целые минуты → «7 ч 20 мин» / «45 мин» / «0 мин». */

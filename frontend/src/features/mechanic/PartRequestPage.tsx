@@ -1,9 +1,10 @@
 import clsx from "clsx";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Minus, Plus } from "lucide-react";
 
 import { NotFoundPage } from "@/pages/ErrorPage";
-import { fieldMessage, toAppError } from "@/shared/api/errors";
+import { fieldMessage, fieldText, toAppError } from "@/shared/api/errors";
 import { PART_UNIT_LABELS } from "@/shared/api/types";
 import { useToast } from "@/shared/ui/toast";
 import { Alert, Button, Input, Textarea } from "@/shared/ui/ui";
@@ -54,13 +55,13 @@ export function PartRequestPage() {
     );
   }
 
-  const descError = local ?? (err?.fields.description ? "Укажите запчасть или опишите, что нужно (до 500 символов)" : undefined);
+  const descError = local ?? fieldText(err, "description", "Укажите запчасть или опишите, что нужно (до 500 символов)");
   const otherError = err && !err.fields.description && !err.fields.quantity && !err.fields.part_id ? err.message : undefined;
 
   return (
     <form onSubmit={submit} className="mx-auto max-w-xl space-y-5" noValidate>
       <div>
-        <Link to={`/tasks/${encodeURIComponent(itemId)}`} className="text-sm text-muted">← К работе</Link>
+        <Link to={`/tasks/${encodeURIComponent(itemId)}`} className="inline-flex items-center gap-1 text-sm text-muted"><ArrowLeft aria-hidden="true" className="size-4" />К работе</Link>
         <h1 className="mt-1 text-xl font-semibold">Нужна запчасть</h1>
         <p className="text-sm text-muted">{task.data.vehicle.plate_number ?? "без номера"} · {task.data.name}</p>
       </div>
@@ -104,9 +105,9 @@ export function PartRequestPage() {
       <div>
         <div className="mb-1 text-sm text-muted">Количество{part ? `, ${PART_UNIT_LABELS[part.unit as keyof typeof PART_UNIT_LABELS] ?? part.unit}` : ""}</div>
         <div className="flex items-center gap-3">
-          <button type="button" aria-label="Меньше" disabled={qty <= 1} onClick={() => setQty((q) => Math.max(1, q - 1))} className={clsx("h-14 w-14 rounded border border-border text-2xl disabled:opacity-40")}>−</button>
+          <button type="button" aria-label="Меньше" disabled={qty <= 1} onClick={() => setQty((q) => Math.max(1, q - 1))} className={clsx("grid h-14 w-14 place-items-center rounded border border-border disabled:opacity-40")}><Minus size={22} aria-hidden="true" /></button>
           <output aria-label="Количество" className="min-w-12 text-center text-2xl font-semibold tabular-nums">{qty}</output>
-          <button type="button" aria-label="Больше" disabled={qty >= MAX_QTY} onClick={() => setQty((q) => Math.min(MAX_QTY, q + 1))} className="h-14 w-14 rounded border border-border text-2xl disabled:opacity-40">+</button>
+          <button type="button" aria-label="Больше" disabled={qty >= MAX_QTY} onClick={() => setQty((q) => Math.min(MAX_QTY, q + 1))} className="grid h-14 w-14 place-items-center rounded border border-border disabled:opacity-40"><Plus size={22} aria-hidden="true" /></button>
         </div>
         {err?.fields.quantity && <p role="alert" className="mt-1 text-xs text-danger">{fieldMessage(err, "quantity")}</p>}
         {err?.fields.part_id && <p role="alert" className="mt-1 text-xs text-danger">{fieldMessage(err, "part_id")}</p>}

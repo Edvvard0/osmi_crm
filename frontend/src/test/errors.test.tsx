@@ -5,7 +5,7 @@ import { App } from "@/app/App";
 import { ErrorBoundary } from "@/app/ErrorBoundary";
 import { installGlobalHandlers } from "@/app/globalHandlers";
 import { api } from "@/shared/api/client";
-import { AppError, ERROR_MESSAGES } from "@/shared/api/errors";
+import { AppError, ERROR_MESSAGES, fieldText } from "@/shared/api/errors";
 import { resetReporterForTests } from "@/shared/lib/reporter";
 import { ToastProvider } from "@/shared/ui/toast";
 
@@ -79,6 +79,18 @@ describe("API client: сообщение для каждого HTTP-кода", (
     vi.stubGlobal("fetch", f);
     await expect(api("/me")).resolves.toEqual({ ok: 1 });
     expect(f).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("fieldText", () => {
+  it("required/invalid → подсказка формы, известный код → свой текст, нет поля → undefined", () => {
+    const e = new AppError("validation_error", 422, { a: "required", b: "invalid", c: "markup_not_allowed", d: "weird_code" });
+    expect(fieldText(e, "a", "Подсказка")).toBe("Подсказка");
+    expect(fieldText(e, "b", "Подсказка")).toBe("Подсказка");
+    expect(fieldText(e, "c", "Подсказка")).toBe("Нельзя использовать символы < и >");
+    expect(fieldText(e, "d", "Подсказка")).toBe("Подсказка");
+    expect(fieldText(e, "zzz", "Подсказка")).toBeUndefined();
+    expect(fieldText(null, "a", "Подсказка")).toBeUndefined();
   });
 });
 

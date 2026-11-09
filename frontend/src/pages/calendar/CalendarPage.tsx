@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { AppointmentDetails } from "@/features/appointments/AppointmentDetails";
@@ -262,9 +263,9 @@ export function CalendarPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" variant="secondary" aria-label={effMode === "week" ? "Предыдущая неделя" : "Предыдущий день"} onClick={() => shift(-1)}>‹</Button>
+        <Button type="button" variant="secondary" aria-label={effMode === "week" ? "Предыдущая неделя" : "Предыдущий день"} onClick={() => shift(-1)}><ChevronLeft size={18} aria-hidden="true" /></Button>
         <Button type="button" variant="secondary" onClick={() => setDate(today)}>Сегодня</Button>
-        <Button type="button" variant="secondary" aria-label={effMode === "week" ? "Следующая неделя" : "Следующий день"} onClick={() => shift(1)}>›</Button>
+        <Button type="button" variant="secondary" aria-label={effMode === "week" ? "Следующая неделя" : "Следующий день"} onClick={() => shift(1)}><ChevronRight size={18} aria-hidden="true" /></Button>
         <div className="w-40">
           <Input id="cal-date" label="Дата" type="date" value={date} onChange={(e) => isDateStr(e.target.value) && setDate(e.target.value)} />
         </div>

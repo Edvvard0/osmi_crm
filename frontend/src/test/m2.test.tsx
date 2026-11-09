@@ -4,10 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "@/app/App";
 import { ERROR_MESSAGES } from "@/shared/api/errors";
-import type { Client, ClientDetail, Role, SearchHit, User, Vehicle, VehicleDetail } from "@/shared/api/types";
+import type { Client, ClientDetail, Role, User, Vehicle, VehicleDetail } from "@/shared/api/types";
 import { isValidVin, maskPhone, normalizePhone, normalizePlate } from "@/shared/lib/masks";
 
-import { type Handler, LOC1, apiError, calls, json, makeUser, mockApi, session } from "./mockApi";
+import { type Handler, LOC1, calls, json, makeUser, mockApi, session } from "./mockApi";
 
 const base = (user: User): Record<string, Handler> => ({
   "POST /auth/refresh": () => json(200, session(user)),
@@ -385,68 +385,4 @@ describe("карточка клиента и автомобили", () => {
     await waitFor(() => expect(calls(f, "POST /vehicles/v1/archive")).toHaveLength(1));
     await waitFor(() => expect(window.location.pathname).toBe("/clients/c1"));
   });
-});
-
-describe("глобальный поиск Ctrl+K", () => {
-  const hits: SearchHit[] = [
-    { type: "client", id: "c1", title: "Анна Петрова", subtitle: "+79991234567", client_id: "c1" },
-    { type: "vehicle", id: "v1", title: "Toyota Camry", subtitle: "А123ВС777", client_id: "c1" },
-  ];
-
-  it("открывается по Ctrl+K, ищет от 2 символов, стрелки + Enter ведут на карточку", async () => {
-    const f = mockApi({
-      ...base(manager()),
-      "GET /clients": () => json(200, { items: [], total: 0 }),
-      "GET /search": () => json(200, hits),
-      "GET /vehicles/v1": () => json(200, { ...vehicle(), client: { id: "c1", full_name: "Анна Петрова", phone: "+79991234567" } }),
-    });
-    open("/clients");
-    const u = userEvent.setup();
-    await screen.findByText("Клиентов пока нет");
-    await u.keyboard("{Control>}k{/Control}");
-    const input = await screen.findByRole("combobox", { name: "Поиск клиентов и автомобилей" });
-    expect(input).toHaveFocus();
-    await u.type(input, "а");
-    await new Promise((r) => setTimeout(r, 400));
-    expect(calls(f, "GET /search")).toHaveLength(0);
-    await u.type(input, "1'%");
-    const list = await screen.findByRole("listbox", { name: "Результаты поиска" });
-    await within(list).findByText("Toyota Camry");
-    const url = lastUrl(f, "/api/v1/search?");
-    expect(new URL(url, "http://x").searchParams.get("q")).toBe("а1'%");
-    expect(url).toContain("limit=10");
-    const opts = within(list).getAllByRole("option");
-    expect(opts[0]).toHaveAttribute("aria-selected", "true");
-    await u.keyboard("{ArrowDown}");
-    expect(within(list).getAllByRole("option")[1]).toHaveAttribute("aria-selected", "true");
-    await u.keyboard("{Enter}");
-    await waitFor(() => expect(window.location.pathname).toBe("/vehicles/v1"));
-    expect(screen.queryByRole("dialog", { name: "Глобальный поиск" })).toBeNull();
-  });
-
-  it("Esc закрывает; <script> в результатах — текст", async () => {
-    const evil = "<script>alert(1)</script>";
-    mockApi({
-      ...base(manager()),
-      "GET /search": () => json(200, [{ type: "client", id: "c1", title: evil, subtitle: evil, client_id: "c1" }]),
-    });
-    const { container } = open("/");
-    const u = userEvent.setup();
-    await u.click(await screen.findByRole("button", { name: "Глобальный поиск" }));
-    await u.type(await screen.findByRole("combobox", { name: "Поиск клиентов и автомобилей" }), "ab");
-    expect((await screen.findAllByText(evil)).length).toBeGreaterThan(0);
-    expect(container.querySelector("script")).toBeNull();
-    await u.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog", { name: "Глобальный поиск" })).toBeNull();
-  });
-
-  it("ошибка поиска: сообщение из словаря", async () => {
-    mockApi({ ...base(manager()), "GET /search": () => apiError(500, "internal_error") });
-    open("/");
-    const u = userEvent.setup();
-    await screen.findByRole("button", { name: "Глобальный поиск" });
-    await u.keyboard("{Control>}k{/Control}");
-    await u.type(await screen.findByRole("combobox", { name: "Поиск клиентов и автомобилей" }), "ab");
-    expect(await screen.findByText(ERROR_MESSAGES.internal_error, undefined, { timeout: 8000 })).toBeInTheDocument();
-  }, 15000);
 });

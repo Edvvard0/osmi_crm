@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 import { NotFoundPage } from "@/pages/ErrorPage";
 import { api } from "@/shared/api/client";
@@ -62,7 +63,7 @@ export function OrderPrintPage() {
 
   return (
     <div className="space-y-3">
-      <Link to={`/orders/${encodeURIComponent(id)}`} className="text-sm text-muted underline">← Заказ {number}</Link>
+      <Link to={`/orders/${encodeURIComponent(id)}`} className="inline-flex items-center gap-1 text-sm text-muted underline"><ArrowLeft aria-hidden="true" className="size-4" />Заказ {number}</Link>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Печать: {number}</h1>
         <div className="flex flex-wrap gap-2">

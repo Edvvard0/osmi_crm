@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 import { fieldMessage, toAppError } from "@/shared/api/errors";
 import { formatMoney } from "@/shared/lib/money";
@@ -25,7 +26,7 @@ export function PartPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <Link to={back} className="text-sm text-muted underline">← Склад</Link>
+          <Link to={back} className="inline-flex items-center gap-1 text-sm text-muted underline"><ArrowLeft aria-hidden="true" className="size-4" />Склад</Link>
           <h1 className="truncate text-xl font-semibold">{q.data?.part.name ?? "Позиция"}</h1>
           {q.data && <p className="text-sm text-muted">{q.data.part.sku}{q.data.part.brand ? ` · ${q.data.part.brand}` : ""}</p>}
         </div>

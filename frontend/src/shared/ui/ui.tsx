@@ -6,10 +6,11 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
   forwardRef,
-  useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { Link, type LinkProps } from "react-router-dom";
 
 import { useIsOffline } from "@/shared/lib/connectivity";
@@ -112,17 +113,19 @@ export const Td = ({ children }: { children?: ReactNode }) => <td className="bor
 
 export function Dialog({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
+  // Открываем через showModal(): верхний слой, затемнение, фокус внутри. Атрибут open в разметке
+  // делал бы окно немодальным (обычным блоком поверх страницы). Без showModal (старые движки) — open.
+  useLayoutEffect(() => {
     const d = ref.current;
-    if (!d) return;
-    if (open && !d.open) d.showModal?.();
-    if (!open && d.open) d.close?.();
+    if (!open || !d || d.open) return;
+    if (typeof d.showModal === "function") d.showModal();
+    else d.setAttribute("open", "");
   }, [open]);
   if (!open) return null;
-  return (
+  // Портал в body: на окно не действуют стили родителя (space-y-* сбивает центрирование).
+  return createPortal(
     <dialog
       ref={ref}
-      open
       aria-label={title}
       onCancel={(e) => {
         e.preventDefault();
@@ -132,7 +135,8 @@ export function Dialog({ open, title, onClose, children }: { open: boolean; titl
     >
       <h2 className="mb-3 text-base font-semibold">{title}</h2>
       {children}
-    </dialog>
+    </dialog>,
+    document.body,
   );
 }
 

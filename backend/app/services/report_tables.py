@@ -25,8 +25,8 @@ from app.services.report_common import (
     Period,
     dec,
     in_period,
-    local_day,
     loc_ids,
+    local_day,
     money_s,
     pct_s,
     q2,
@@ -62,7 +62,7 @@ DEFAULT_GROUP = {"revenue": "location", "clients": "location", "expenses": "cate
 
 
 def col(key: str, title: str, kind: str) -> ReportColumn:
-    return ReportColumn(key=key, title=title, kind=kind)  # type: ignore[arg-type]
+    return ReportColumn(key=key, title=title, kind=kind)
 
 
 def cnt(value: int | Decimal) -> str:
@@ -128,10 +128,7 @@ async def revenue_report(
 ) -> Result:
     ids = loc_ids(locs)
     co = closed_orders(p, ids)
-    if group_by == "location":
-        key = co.c.location_id
-    else:
-        key = _time_key(group_by, co.c.day)
+    key = co.c.location_id if group_by == "location" else _time_key(group_by, co.c.day)
     data: dict[Any, _Rev] = {}
 
     def rec(k: Any) -> _Rev:
@@ -163,10 +160,10 @@ async def revenue_report(
     rows: list[Row] = []
     if group_by == "location":
         for loc in locs:
-            r = data.get(loc.id)
-            if r is None and not loc.is_active:
+            found = data.get(loc.id)
+            if found is None and not loc.is_active:
                 continue
-            rows.append(_rev_row(loc.name, r or _Rev(), {"location_id": str(loc.id)}))
+            rows.append(_rev_row(loc.name, found or _Rev(), {"location_id": str(loc.id)}))
         rows.sort(key=lambda row: Decimal(row["revenue"] or 0), reverse=True)
     else:
         for k in _group_keys(group_by, p):
@@ -368,9 +365,7 @@ async def mechanics_report(
 # ---------------- клиенты ----------------
 
 
-async def _lapsed(
-    session: AsyncSession, ref: date, ids: list[uuid.UUID]
-) -> dict[uuid.UUID, int]:
+async def _lapsed(session: AsyncSession, ref: date, ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
     """Клиенты с заказом за 180–365 суток до `ref` и без заказов за последние 180 суток.
 
     Относятся к точке их последнего заказа в окне 180–365 суток.
@@ -526,6 +521,7 @@ async def stock_report(session: AsyncSession, locs: list[Location], p: Period) -
         .where(WorkOrderPart.part_id.is_not(None))
         .group_by(WorkOrderPart.part_id)
     ):
+        assert part_id is not None  # отфильтровано условием part_id IS NOT NULL
         sold[part_id] = (dec(qty), dec(revenue), dec(cost))
     received: dict[uuid.UUID, Decimal] = {}
     for part_id, value in await session.execute(
@@ -556,10 +552,22 @@ async def stock_report(session: AsyncSession, locs: list[Location], p: Period) -
             info[pid] = (sku, name)
     ordered = sorted(
         (pid for pid in part_ids if pid in info),
-        key=lambda pid: (-sold.get(pid, (ZERO, ZERO, ZERO))[1], -on_hand.get(pid, ZERO), info[pid][1]),
+        key=lambda pid: (
+            -sold.get(pid, (ZERO, ZERO, ZERO))[1],
+            -on_hand.get(pid, ZERO),
+            info[pid][1],
+        ),
     )
 
-    def row(label: str, sku: str | None, qty: Decimal, rev: Decimal, cost: Decimal, rec: Decimal, val: Decimal) -> Row:
+    def row(
+        label: str,
+        sku: str | None,
+        qty: Decimal,
+        rev: Decimal,
+        cost: Decimal,
+        rec: Decimal,
+        val: Decimal,
+    ) -> Row:
         margin = rev - cost
         return {
             "part": label,
@@ -639,7 +647,13 @@ async def expenses_report(
         Expense.expense_date <= p.date_to,
     ]
     total = func.sum(Expense.amount)
-    extra_key = "location_id" if group_by == "location" else "category_id" if group_by == "category" else None
+    extra_key = (
+        "location_id"
+        if group_by == "location"
+        else "category_id"
+        if group_by == "category"
+        else None
+    )
     if group_by == "category":
         stmt = (
             select(ExpenseCategory.name, func.count(), total, ExpenseCategory.id)
@@ -659,10 +673,7 @@ async def expenses_report(
     else:
         month = func.to_char(Expense.expense_date, "YYYY-MM")
         stmt = (
-            select(month, func.count(), total, month)
-            .where(*base)
-            .group_by(month)
-            .order_by(month)
+            select(month, func.count(), total, month).where(*base).group_by(month).order_by(month)
         )
     rows: list[Row] = []
     t_count, t_total = 0, ZERO
@@ -764,7 +775,10 @@ async def profit_report(session: AsyncSession, locs: list[Location], p: Period) 
     chart = ReportChart(
         type="bar",
         x="group",
-        series=[ChartSeries(key="revenue", title="Выручка"), ChartSeries(key="profit", title="Прибыль")],
+        series=[
+            ChartSeries(key="revenue", title="Выручка"),
+            ChartSeries(key="profit", title="Прибыль"),
+        ],
     )
     return Result(columns, rows, row("Итого", *sums), chart)
 
@@ -811,7 +825,7 @@ async def build_report(
     result = await runners[report_id]()
     truncated = result.truncated or len(result.rows) > MAX_ROWS
     return Report(
-        id=report_id,  # type: ignore[arg-type]
+        id=report_id,
         title=REPORT_TITLES[report_id],
         date_from=p.date_from,
         date_to=p.date_to,

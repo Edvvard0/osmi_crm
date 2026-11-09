@@ -316,8 +316,8 @@ const cell = (date: string) => document.querySelector<HTMLElement>(`[data-date="
 
 describe("модуль 10: форматирование", () => {
   it("изменение к прошлому периоду: стрелка, знак, п.п. для процентов, пусто → тире", () => {
-    expect(formatDelta("money", "12.5")).toEqual({ text: "▲ 12,50 %", sign: 1 });
-    expect(formatDelta("percent", "-3.2")).toEqual({ text: "▼ 3,20 п.п.", sign: -1 });
+    expect(formatDelta("money", "12.5")).toEqual({ text: "12,50 %", sign: 1 });
+    expect(formatDelta("percent", "-3.2")).toEqual({ text: "3,20 п.п.", sign: -1 });
     expect(formatDelta("count", "0.00")).toEqual({ text: "0 %", sign: 0 });
     expect(formatDelta("money", null)).toEqual({ text: "—", sign: 0 });
   });
@@ -445,10 +445,10 @@ describe("D-01 дашборд директора", () => {
     const link = await screen.findByRole("link", { name: /^Выручка/ });
     expect(link.getAttribute("href")).toMatch(/^\/reports\?report=revenue&date_from=\d{4}-\d{2}-\d{2}&date_to=\d{4}-\d{2}-\d{2}$/);
     expect(norm(link.textContent)).toContain("250 000,00 ₽");
-    expect(within(link).getByText(/▲\s25,00\s%/)).toBeInTheDocument();
+    expect(within(link).getByText(/^25,00\s%$/)).toBeInTheDocument();
     expect(norm(link.textContent)).toContain("было 200 000,00 ₽");
     const load = screen.getByRole("link", { name: /^Загрузка постов/ });
-    expect(within(load).getByText(/▼\s3,20\sп\.п\./)).toBeInTheDocument();
+    expect(within(load).getByText(/^3,20\sп\.п\.$/)).toBeInTheDocument();
     expect(within(screen.getByRole("link", { name: /^Конверсия записей/ })).getByText("—")).toBeInTheDocument();
 
     // директор с «Все точки»: location_id не передаётся

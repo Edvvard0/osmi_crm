@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { X } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useState } from "react";
 
 import { useDebounced } from "@/pages/catalog/common";
@@ -123,7 +124,7 @@ export function LinesEditor({
                 <div className="text-xs text-muted">{l.part.sku} · {unitLabel(l.part.unit)}</div>
               </div>
               <Button type="button" variant="ghost" aria-label={`Убрать ${l.part.name}`} onClick={() => setLines(lines.filter((_, k) => k !== i))}>
-                ×
+                <X size={16} aria-hidden="true" />
               </Button>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">

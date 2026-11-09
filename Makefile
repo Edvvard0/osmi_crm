@@ -1,6 +1,6 @@
 # Windows: Git Bash/WSL + make, либо те же команды напрямую (см. README и docs/deployment.md).
 .PHONY: up down logs test lint migrate seed \
-	prod-up prod-down prod-logs prod-backup prod-restore-check prod-cert prod-seed prod-telegram-webhook
+	prod-up prod-down prod-logs prod-backup prod-restore-check prod-cert prod-seed prod-demo prod-telegram-webhook
 
 # ---------- dev ----------
 up:
@@ -41,5 +41,8 @@ prod-cert:
 # Первичное заполнение: руководитель и точка.
 prod-seed:
 	sh deploy/scripts/seed.sh
+# Демо-данные для показа (пароли DEMO_* — из окружения вызова).
+prod-demo:
+	sh deploy/scripts/demo.sh
 prod-telegram-webhook:
 	sh deploy/scripts/telegram-webhook.sh

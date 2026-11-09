@@ -265,7 +265,9 @@ async def calculate_month(
         adj_stmt = adj_stmt.where(PayrollAdjustment.user_id == user_id)
     elif location_id is not None:
         bound = select(UserLocation.user_id).where(UserLocation.location_id == location_id)
-        scope = or_(PayrollScheme.user_id.in_(bound), PayrollScheme.user_id.in_(list(by_user_items)))
+        scope = or_(
+            PayrollScheme.user_id.in_(bound), PayrollScheme.user_id.in_(list(by_user_items))
+        )
         scheme_stmt = scheme_stmt.where(scope)
         adj_stmt = adj_stmt.where(
             or_(

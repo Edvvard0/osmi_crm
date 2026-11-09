@@ -27,3 +27,10 @@ async def test_client_error_rate_limit(client):
     ]
     assert codes.count(204) == 20 and codes[-1] == 429
     client_errors.limiter.reset()
+
+
+async def test_markup_error_code_is_specific_and_not_echoed(client):
+    r = await client.post("/api/v1/client-errors", json={"message": "<img src=x onerror=alert(1)>"})
+    assert r.status_code == 422
+    assert r.json()["error"]["fields"] == {"message": "markup_not_allowed"}
+    assert "onerror" not in r.text and "img" not in r.text

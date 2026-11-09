@@ -18,11 +18,11 @@ from app.services.report_common import (
     dec,
     in_period,
     load_percent,
-    local_day,
     loc_ids,
+    local_day,
     post_load,
-    ratio_pct,
     q2,
+    ratio_pct,
 )
 
 

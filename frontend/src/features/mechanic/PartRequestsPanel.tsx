@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 import { useMe } from "@/features/auth/AuthProvider";
 import { api } from "@/shared/api/client";
-import { toAppError } from "@/shared/api/errors";
+import { fieldText, toAppError } from "@/shared/api/errors";
 import { PART_UNIT_LABELS, type Page, type Part, type PartUnit } from "@/shared/api/types";
 import { parseDecimal } from "@/shared/lib/money";
 import { useToast } from "@/shared/ui/toast";
@@ -177,7 +177,11 @@ function RejectDialog({ r, onClose }: { r: PartRequestFull; onClose: () => void 
       { id: r.id, action: "reject", body: { reason: t } },
       {
         onSuccess: () => { toast.push("success", "Заявка отклонена"); onClose(); },
-        onError: (e2) => (toAppError(e2).fields.reason ? setFieldErr("Укажите причину отказа (до 500 символов)") : setError(mechanicErrorText(e2))),
+        onError: (e2) => {
+          const fe = fieldText(toAppError(e2), "reason", "Укажите причину отказа (до 500 символов)");
+          if (fe) setFieldErr(fe);
+          else setError(mechanicErrorText(e2));
+        },
       },
     );
   }

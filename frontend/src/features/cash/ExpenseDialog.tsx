@@ -71,7 +71,7 @@ export function ExpenseDialog({ locationId, timezone, isDirector, onClose, onDon
           error={fe("expense_date")}
           onChange={(e) => setDate(e.target.value)}
         />
-        <Input label="Описание" maxLength={500} value={description} onChange={(e) => setDescription(e.target.value)} />
+        <Input label="Описание" maxLength={500} value={description} error={fe("description")} onChange={(e) => setDescription(e.target.value)} />
         {err && !hasFields && <Alert>{cashErrorText(err)}</Alert>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>Отмена</Button>

@@ -1,10 +1,9 @@
 import clsx from "clsx";
 import { Suspense } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useMe, useAuth } from "@/features/auth/AuthProvider";
 import { useActiveLocation } from "@/features/locations/api";
-import { GlobalSearch } from "@/features/search/CommandPalette";
 import type { Role } from "@/shared/api/types";
 import { Button, Loading } from "@/shared/ui/ui";
 
@@ -60,6 +59,9 @@ function LocationSwitcher() {
 export function Layout() {
   const me = useMe();
   const { logout } = useAuth();
+  const navigate = useNavigate();
+  // Явный выход: следующий вход начинается с главной, а не со страницы прежнего пользователя.
+  const signOut = () => void logout().then(() => navigate("/login", { replace: true }));
   const nav = ALL_NAV.filter((n) => n.roles.includes(me.role));
   const { pathname } = useLocation();
   return (
@@ -77,9 +79,8 @@ export function Layout() {
         <header className="flex items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2">
           <LocationSwitcher />
           <div className="flex items-center gap-2">
-            {(me.role === "manager" || me.role === "director") && <GlobalSearch />}
             <span className="hidden truncate text-sm text-muted sm:inline">{me.full_name}</span>
-            <Button variant="ghost" onClick={() => void logout()}>Выйти</Button>
+            <Button variant="ghost" onClick={signOut}>Выйти</Button>
           </div>
         </header>
         <OfflineBanner />

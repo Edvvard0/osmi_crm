@@ -132,9 +132,9 @@ async def payment_reads(session: AsyncSession, payments: list[Payment]) -> list[
                 work_order_id=p.work_order_id,
                 order_number=numbers[p.work_order_id],
                 location_id=p.location_id,
-                payment_type=p.payment_type,  # type: ignore[arg-type]
+                payment_type=p.payment_type,
                 amount=p.amount,
-                method=p.method,  # type: ignore[arg-type]
+                method=p.method,
                 paid_at=p.paid_at.astimezone(tz),
                 refund_of_id=p.refund_of_id,
                 refundable=refundable.get(p.id) if p.payment_type == "payment" else None,
@@ -421,7 +421,7 @@ async def _expense_reads(session: AsyncSession, items: list[Expense]) -> list[Ex
                 location_id=e.location_id,
                 category=cats[e.category_id],
                 amount=e.amount,
-                method=e.method,  # type: ignore[arg-type]
+                method=e.method,
                 expense_date=e.expense_date,
                 description=e.description,
                 created_by=users[e.created_by],
@@ -637,7 +637,7 @@ async def cash_report(
         timezone=loc.timezone,
         payments=[
             MethodTotals(
-                method=m,  # type: ignore[arg-type]
+                method=m,
                 received=received[m],
                 refunded=refunded[m],
                 net=received[m] - refunded[m],
@@ -648,7 +648,7 @@ async def cash_report(
         refunded_total=refunded_total,
         net_total=received_total - refunded_total,
         expenses_by_method=[
-            MethodExpense(method=m, total=exp_method[m])  # type: ignore[arg-type]
+            MethodExpense(method=m, total=exp_method[m])
             for m in METHOD_ORDER
         ],
         expenses_by_category=by_cat,
@@ -745,7 +745,7 @@ async def cash_operations(
                     kind="expense",
                     id=e.id,
                     at=at.astimezone(tz),
-                    method=e.method,  # type: ignore[arg-type]
+                    method=e.method,
                     amount=e.amount,
                     signed_amount=-e.amount,
                     order=None,
@@ -760,10 +760,10 @@ async def cash_operations(
             p = payments[i]
             items.append(
                 CashOperation(
-                    kind=p.payment_type,  # type: ignore[arg-type]
+                    kind=p.payment_type,
                     id=p.id,
                     at=at.astimezone(tz),
-                    method=p.method,  # type: ignore[arg-type]
+                    method=p.method,
                     amount=p.amount,
                     signed_amount=p.amount if p.payment_type == "payment" else -p.amount,
                     order=OrderRef(id=p.work_order_id, number=numbers[p.work_order_id]),

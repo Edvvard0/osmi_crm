@@ -157,17 +157,23 @@ _STYLE = {"text": 0, "header": 1, "money": 2, "hours": 3, "count": 4, "percent":
 _CONTENT_TYPES = (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    '<Default Extension="rels" '
+    'ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
     '<Default Extension="xml" ContentType="application/xml"/>'
-    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
-    '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
-    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+    '<Override PartName="/xl/workbook.xml" '
+    'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+    '<Override PartName="/xl/worksheets/sheet1.xml" '
+    'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+    '<Override PartName="/xl/styles.xml" '
+    'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
     "</Types>"
 )
 _ROOT_RELS = (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+    '<Relationship Id="rId1" '
+    'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" '
+    'Target="xl/workbook.xml"/>'
     "</Relationships>"
 )
 _WORKBOOK = (
@@ -179,8 +185,12 @@ _WORKBOOK = (
 _WORKBOOK_RELS = (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
-    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+    '<Relationship Id="rId1" '
+    'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
+    'Target="worksheets/sheet1.xml"/>'
+    '<Relationship Id="rId2" '
+    'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" '
+    'Target="styles.xml"/>'
     "</Relationships>"
 )
 _STYLES = (
@@ -221,7 +231,10 @@ def _xml_text(value: str) -> str:
 def _text_cell(ref: str, value: str, style: int = 0) -> str:
     if value == "":
         return ""
-    return f'<c r="{ref}" s="{style}" t="inlineStr"><is><t xml:space="preserve">{_xml_text(value)}</t></is></c>'
+    return (
+        f'<c r="{ref}" s="{style}" t="inlineStr">'
+        f'<is><t xml:space="preserve">{_xml_text(value)}</t></is></c>'
+    )
 
 
 def _sheet_xml(table: Table) -> str:
@@ -229,7 +242,11 @@ def _sheet_xml(table: Table) -> str:
     widths = [min(max(len(c.title), 10), 60) for c in table.columns]
     parts = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>']
     parts.append('<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">')
-    parts.append('<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>')
+    parts.append(
+        '<sheetViews><sheetView workbookViewId="0">'
+        '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>'
+        "</sheetView></sheetViews>"
+    )
     body: list[str] = []
     header = "".join(
         _text_cell(f"{_col_letter(i)}1", safe_text(c.title), _STYLE["header"])

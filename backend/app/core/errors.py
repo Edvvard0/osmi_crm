@@ -3,6 +3,9 @@
 Внутренние детали (трейсбек, SQL, имена ограничений, введённые значения) клиенту не отдаются.
 """
 
+import re
+from typing import Any
+
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -120,6 +123,20 @@ def error_response(
     return resp
 
 
+_REASON_CODE = re.compile(r"^[a-z][a-z_]{2,39}$")
+
+
+def _field_code(e: Any) -> str:
+    """Тип ошибки поля. Для собственных валидаторов (ValueError("код")) — сам код, например
+    markup_not_allowed: это строка из нашего кода, а не введённое значение."""
+    kind = str(e["type"])
+    if kind == "value_error":
+        reason = str((e.get("ctx") or {}).get("error", ""))
+        if _REASON_CODE.fullmatch(reason):
+            return reason
+    return kind
+
+
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _app(request: Request, exc: AppError) -> JSONResponse:
@@ -136,7 +153,7 @@ def register_error_handlers(app: FastAPI) -> None:
         fields: dict[str, str] = {}
         for e in exc.errors():
             loc = ".".join(str(p) for p in e["loc"] if p not in ("body", "query", "path"))
-            fields[loc or "_"] = str(e["type"])
+            fields[loc or "_"] = _field_code(e)
         return error_response(422, "validation_error", request, fields)
 
     @app.exception_handler(IntegrityError)

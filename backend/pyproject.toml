@@ -47,6 +47,8 @@ markers = ["integration: требует PostgreSQL"]
 source = ["app"]
 branch = true
 concurrency = ["greenlet", "thread"]
+# Скрипт демо-данных работает с живым API и проверяется прогоном, а не тестами.
+omit = ["app/demo_seed.py"]
 
 [tool.coverage.report]
 fail_under = 85

@@ -7,7 +7,7 @@ import { Modal } from "@/shared/ui/modal";
 import { Badge, Button, LinkButton } from "@/shared/ui/ui";
 
 import { NEXT_STATUSES, isEditable, useChangeStatus } from "./api";
-import { STATUS_STYLE, struckClass, vehicleTitle } from "./status";
+import { StatusIcon, struckClass, vehicleTitle } from "./status";
 import { dateOfMs, formatDay, hhmm, minuteOfDay } from "./time";
 
 interface Props {
@@ -58,7 +58,7 @@ export function AppointmentDetails({ appointment: a, tz, postName, onClose, onEd
       <div className="space-y-4 text-sm">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={TONE[a.status]}>
-            <span aria-hidden="true">{STATUS_STYLE[a.status].glyph}</span> {APPOINTMENT_STATUS_LABELS[a.status]}
+            <StatusIcon status={a.status} className="mr-1" />{APPOINTMENT_STATUS_LABELS[a.status]}
           </Badge>
           <span className={struckClass(a.status)}>
             {formatDay(dateOfMs(s, tz))}, {hhmm(minuteOfDay(s, tz))}–{hhmm(minuteOfDay(e, tz))}

@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { X } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useRef } from "react";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -54,8 +55,8 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
       >
         <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
           <h2 className="truncate text-base font-semibold">{title}</h2>
-          <button type="button" onClick={onClose} aria-label="Закрыть" className="rounded px-2 py-1 text-lg leading-none text-muted hover:text-fg">
-            ×
+          <button type="button" onClick={onClose} aria-label="Закрыть" className="rounded p-1.5 text-muted hover:text-fg">
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
         <div ref={bodyRef} className="flex-1 overflow-y-auto p-4">{children}</div>

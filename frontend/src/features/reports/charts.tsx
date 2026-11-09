@@ -51,6 +51,14 @@ function Legend({ series }: { series: ChartSeries[] }) {
 }
 
 function Axis({ min, max, format, categories }: { min: number; max: number; format: (v: number) => string; categories: string[] }) {
+  // Одна категория рисуется по центру (точка/столбец) — и подпись ставим под ней, а не у левого края.
+  if (categories.length === 1) {
+    return (
+      <div className="mt-1 text-center text-xs text-muted">
+        <span>{categories[0]}</span> · {format(min)} … {format(max)}
+      </div>
+    );
+  }
   return (
     <div className="mt-1 flex items-start justify-between gap-2 text-xs text-muted">
       <span>{categories[0] ?? ""}</span>
@@ -104,7 +112,9 @@ export function BarChart({ categories, series, format, label, className }: Props
   const n = Math.max(categories.length, 1);
   const k = Math.max(series.length, 1);
   const slot = W / n;
-  const barW = Math.max((slot * 0.7) / k, 1);
+  // Ширина столбца ограничена: при одной-двух категориях иначе получается сплошная плашка на весь график.
+  const barW = Math.max(Math.min((slot * 0.7) / k, 40), 1);
+  const groupPad = (slot - barW * k) / 2;
   const y = (v: number) => H - PAD - ((v - min) * (H - 2 * PAD)) / (max - min);
   const zero = y(0);
   return (
@@ -120,7 +130,7 @@ export function BarChart({ categories, series, format, label, className }: Props
               return (
                 <rect
                   key={s.key}
-                  x={i * slot + slot * 0.15 + si * barW}
+                  x={i * slot + groupPad + si * barW}
                   y={top}
                   width={barW}
                   height={Math.max(Math.abs(y(v) - zero), v === 0 ? 0 : 1)}

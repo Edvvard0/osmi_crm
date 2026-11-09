@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 import { fieldMessage, toAppError } from "@/shared/api/errors";
 import { formatMoney } from "@/shared/lib/money";
@@ -60,7 +61,7 @@ export function ReceiptPage() {
     <form onSubmit={submit} className="max-w-3xl space-y-4" noValidate>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link to={back} className="text-sm text-muted underline">← Склад</Link>
+          <Link to={back} className="inline-flex items-center gap-1 text-sm text-muted underline"><ArrowLeft aria-hidden="true" className="size-4" />Склад</Link>
           <h1 className="text-xl font-semibold">Приход товара</h1>
         </div>
         {items.length > 1 && <LocationSelect />}

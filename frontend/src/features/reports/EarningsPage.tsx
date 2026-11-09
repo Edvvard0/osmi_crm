@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -41,9 +42,9 @@ export function EarningsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Заработок</h1>
         <div role="group" aria-label="Месяц" className="flex items-center gap-1">
-          <Button variant="secondary" aria-label="Предыдущий месяц" onClick={() => setMonth(shiftMonth(m, -1))}>‹</Button>
+          <Button variant="secondary" aria-label="Предыдущий месяц" onClick={() => setMonth(shiftMonth(m, -1))}><ChevronLeft size={18} aria-hidden="true" /></Button>
           <span aria-live="polite" className="min-w-36 px-2 text-center text-sm font-medium capitalize">{formatMonth(m)}</span>
-          <Button variant="secondary" aria-label="Следующий месяц" disabled={next > currentMonth} onClick={() => setMonth(next)}>›</Button>
+          <Button variant="secondary" aria-label="Следующий месяц" disabled={next > currentMonth} onClick={() => setMonth(next)}><ChevronRight size={18} aria-hidden="true" /></Button>
         </div>
       </div>
 

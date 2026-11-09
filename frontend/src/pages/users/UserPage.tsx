@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useMe } from "@/features/auth/AuthProvider";
@@ -50,6 +50,7 @@ function UserForm({ user }: { user?: User }) {
   const [role, setRole] = useState<Role>(user?.role ?? "manager");
   const [password, setPassword] = useState("");
   const [locIds, setLocIds] = useState<string[]>(user?.location_ids ?? []);
+  const [locTouched, setLocTouched] = useState(false);
   const [localErr, setLocalErr] = useState<Record<string, string>>({});
   const [resetOpen, setResetOpen] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
@@ -63,7 +64,14 @@ function UserForm({ user }: { user?: User }) {
   const passErr = localErr.password ?? fieldMessage(err, "password");
   const showAlert = err && err.code !== "validation_error" && err.code !== "unique_violation";
 
+  // Новый сотрудник при единственной точке сразу к ней привязывается: без точки механика нельзя назначить на работы.
+  const onlyLocId = !user && locs.data?.length === 1 ? locs.data[0]?.id : undefined;
+  useEffect(() => {
+    if (onlyLocId && !locTouched) setLocIds([onlyLocId]);
+  }, [onlyLocId, locTouched]);
+
   function toggleLoc(lid: string) {
+    setLocTouched(true);
     setLocIds((x) => (x.includes(lid) ? x.filter((i) => i !== lid) : [...x, lid]));
   }
 
@@ -116,6 +124,9 @@ function UserForm({ user }: { user?: User }) {
             <Checkbox key={l.id} label={l.name} checked={locIds.includes(l.id)} onChange={() => toggleLoc(l.id)} />
           ))}
           {locs.data?.length === 0 && <p className="text-sm text-muted">Точек пока нет</p>}
+          {role !== "director" && !!locs.data?.length && locIds.length === 0 && (
+            <p className="text-xs text-warning">Без точки сотрудник не видит её данные, а механика нельзя назначить на работы.</p>
+          )}
         </fieldset>
         {showAlert && <Alert>{err.message}</Alert>}
         <Button type="submit" loading={m.isPending}>{user ? "Сохранить" : "Создать"}</Button>

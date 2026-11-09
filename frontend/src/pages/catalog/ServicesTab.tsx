@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { type FormEvent, useMemo, useState } from "react";
+import { Pencil } from "lucide-react";
 
 import {
   PAGE_SIZE,
@@ -123,7 +124,7 @@ export function ServicesTab({ canEdit, locationId }: { canEdit: boolean; locatio
                     </button>
                     {canEdit && (
                       <Button variant="ghost" className="px-2" aria-label={`Изменить категорию ${c.name}`} onClick={() => setCatDlg(c)}>
-                        ✎
+                        <Pencil aria-hidden="true" className="size-4" />
                       </Button>
                     )}
                   </li>

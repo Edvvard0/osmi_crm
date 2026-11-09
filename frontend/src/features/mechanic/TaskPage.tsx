@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { type FormEvent, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { MoreHorizontal } from "lucide-react";
 
 import { NotFoundPage } from "@/pages/ErrorPage";
 import { fieldMessage, toAppError } from "@/shared/api/errors";
@@ -57,7 +58,7 @@ function TaskView({ task, receivedAt }: { task: MechanicTaskDetail; receivedAt: 
                 onClick={() => setMenu((v) => !v)}
                 className="grid h-12 w-12 place-items-center rounded border border-border text-xl"
               >
-                ⋯
+                <MoreHorizontal size={22} aria-hidden="true" />
               </button>
               {menu && (
                 <div role="menu" className="absolute right-0 z-10 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-surface shadow-lg">

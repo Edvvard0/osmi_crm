@@ -166,6 +166,23 @@ describe("MG-13 касса", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Новый расход" })).toBeNull());
   });
 
+  it("расход: ошибка сервера по описанию (разметка) показывается у поля", async () => {
+    world("manager", {
+      "POST /expenses": () => json(422, { error: { code: "validation_error", message: "x", fields: { description: "markup_not_allowed" } } }),
+    });
+    open();
+    const u = userEvent.setup();
+    await screen.findByTestId("cash-balance");
+    await u.click(screen.getByRole("button", { name: "Расход" }));
+    const dlg = within(await screen.findByRole("dialog", { name: "Новый расход" }));
+    await u.selectOptions(dlg.getByLabelText(/^Категория/), "c2");
+    await u.type(dlg.getByLabelText(/^Сумма/), "100");
+    await u.type(dlg.getByLabelText(/^Описание/), "<b>x</b>");
+    await u.click(dlg.getByRole("button", { name: "Добавить расход" }));
+    expect(await dlg.findByText("Нельзя использовать символы < и >")).toBeInTheDocument();
+    expect(dlg.getByLabelText(/^Описание/)).toHaveAttribute("aria-invalid", "true");
+  });
+
   it("возврат (директор): причина обязательна, сумма ≤ refundable, POST /payments/{id}/refund с client_request_id", async () => {
     const f = world("director", {
       "POST /payments/p1/refund": () => json(201, { payment: {}, order: {} }),

@@ -73,7 +73,9 @@ def upgrade() -> None:
         "stock_movements",
         ["related_movement_id"],
         unique=True,
-        postgresql_where=sa.text("movement_type = 'adjustment' AND related_movement_id IS NOT NULL"),
+        postgresql_where=sa.text(
+            "movement_type = 'adjustment' AND related_movement_id IS NOT NULL"
+        ),
     )
     op.create_index(
         "uq_stock_movements_single_return",

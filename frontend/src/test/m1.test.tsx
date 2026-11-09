@@ -222,6 +222,25 @@ describe("сотрудники", () => {
     });
   });
 
+  it("создание: единственная точка отмечена сразу и уходит в location_ids", async () => {
+    const created = makeUser("mechanic", { id: "new-id", login: "mech2", full_name: "Пётр" });
+    const f = mockApi({
+      ...base(makeUser("director")),
+      "GET /locations": () => json(200, [LOC1]),
+      "POST /users": () => json(201, created),
+      "GET /users/new-id": () => json(200, created),
+    });
+    open("/users/new");
+    const u = userEvent.setup();
+    await u.type(await screen.findByLabelText("Логин"), "mech2");
+    await u.type(screen.getByLabelText("ФИО"), "Пётр");
+    await u.type(screen.getByLabelText("Начальный пароль"), "long-password-1");
+    await waitFor(() => expect(screen.getByLabelText("Москва-1")).toBeChecked());
+    await u.click(screen.getByRole("button", { name: "Создать" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/users/new-id"));
+    expect(JSON.parse(String(calls(f, "POST /users")[0][1]?.body)).location_ids).toEqual(["l1"]);
+  });
+
   it("блокировка с подтверждением отправляет is_active=false", async () => {
     const target = makeUser("mechanic", { id: "m1", full_name: "Сидор" });
     const f = mockApi({

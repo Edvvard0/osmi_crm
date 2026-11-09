@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, ArrowRight, Check, MoreHorizontal } from "lucide-react";
 
 import { useMe } from "@/features/auth/AuthProvider";
 import { ForceCloseDialog } from "@/features/cash/ForceCloseDialog";
@@ -34,7 +35,7 @@ import {
   useOrderHistory,
 } from "./api";
 import {
-  ITEM_STATUS_GLYPH,
+  ITEM_STATUS_ICON,
   ITEM_STATUS_LABELS,
   NEXT_STATUS,
   ORDER_DEPARTMENT_LABELS,
@@ -108,7 +109,7 @@ function OrderView({ order, refresh }: { order: WorkOrder; refresh: () => void }
 
   return (
     <div className="space-y-4">
-      <Link to="/orders" className="text-sm text-muted underline">← Заказ-наряды</Link>
+      <Link to="/orders" className="inline-flex items-center gap-1 text-sm text-muted underline"><ArrowLeft aria-hidden="true" className="size-4" />Заказ-наряды</Link>
 
       <header className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -176,7 +177,7 @@ function OrderView({ order, refresh }: { order: WorkOrder; refresh: () => void }
             <div className="flex gap-2">
               <LinkButton variant="secondary" className="flex-1" to={`/orders/${encodeURIComponent(order.id)}/print`}>Печать</LinkButton>
               <div className="relative">
-                <Button variant="secondary" aria-label="Ещё" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((v) => !v)}>⋯</Button>
+                <Button variant="secondary" aria-label="Ещё" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((v) => !v)}><MoreHorizontal size={18} aria-hidden="true" /></Button>
                 {menu && (
                   <div role="menu" className="absolute bottom-full right-0 z-10 mb-1 w-52 rounded-lg border border-border bg-surface p-1 shadow-lg lg:bottom-auto lg:top-full lg:mb-0 lg:mt-1">
                     {!readOnly && (
@@ -291,7 +292,7 @@ function Stepper({ status }: { status: WorkOrderStatus }) {
             i > idx && "border-border text-muted",
           )}
         >
-          {i < idx && <span aria-hidden="true">✓ </span>}
+          {i < idx && <Check aria-hidden="true" className="mr-0.5 inline-block size-3.5 align-[-2px]" />}
           {STATUS_LABELS[s]}
         </li>
       ))}
@@ -516,6 +517,7 @@ function ItemRow({
   const canMechanic = !readOnly && OPEN_ITEM.includes(item.status);
   const list = mechanics ?? [];
   const startedHint = "Работа начата — изменить нельзя";
+  const ItemIcon = ITEM_STATUS_ICON[item.status];
 
   return (
     <li className={clsx("rounded-lg border border-border bg-surface p-3", cancelled && "opacity-60")}>
@@ -525,7 +527,7 @@ function ItemRow({
           <p className="text-xs text-muted">
             {DEPARTMENT_LABELS[item.department]} · норма {formatHours(item.norm_hours_total)} ·{" "}
             <span>
-              <span aria-hidden="true">{ITEM_STATUS_GLYPH[item.status]}</span> {ITEM_STATUS_LABELS[item.status]}
+              <ItemIcon aria-hidden="true" className="inline-block size-3.5 align-[-2px]" /> {ITEM_STATUS_LABELS[item.status]}
             </span>
           </p>
         </div>
@@ -565,7 +567,12 @@ function ItemRow({
                 ))}
               </select>
             ) : (
-              <span className="block min-h-9 py-1.5 text-sm">{item.mechanic?.full_name ?? "Не назначен"}</span>
+              <span className="block min-h-9 py-1.5 text-sm">
+                {item.mechanic?.full_name ?? "Не назначен"}
+                {canMechanic && mechanics && list.length === 0 && (
+                  <span className="block text-xs text-muted">На точке нет механиков — отметьте точку в карточке сотрудника</span>
+                )}
+              </span>
             )}
           </Field>
         </div>
@@ -845,7 +852,11 @@ function HistoryTab({ orderId, tz }: { orderId: string; tz: string }) {
       {q.data.map((h) => (
         <li key={h.id} className="rounded-lg border border-border bg-surface p-3 text-sm">
           <p>
-            {h.from_status ? `${STATUS_LABELS[h.from_status]} → ` : ""}
+            {h.from_status && (
+              <>
+                {STATUS_LABELS[h.from_status]} <ArrowRight aria-hidden="true" className="mx-0.5 inline-block size-3.5 align-[-2px] text-muted" />{" "}
+              </>
+            )}
             <span className="font-medium">{STATUS_LABELS[h.to_status]}</span>
           </p>
           <p className="text-xs text-muted">{h.changed_by.full_name} · {fmtDateTime(h.created_at, tz)}</p>

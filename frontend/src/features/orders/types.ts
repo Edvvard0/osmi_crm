@@ -1,3 +1,5 @@
+import { Circle, CircleCheck, CirclePause, CirclePlay, CircleX, type LucideIcon } from "lucide-react";
+
 import type { Department } from "@/shared/api/types";
 
 /* Модуль 5: заказ-наряды. Деньги, часы и количества — строки-десятичные (см. api-contract-m5.md). */
@@ -48,7 +50,7 @@ export const ITEM_STATUS_LABELS: Record<ItemStatus, string> = {
   done: "Готово",
   cancelled: "Отменена",
 };
-export const ITEM_STATUS_GLYPH: Record<ItemStatus, string> = { pending: "○", in_progress: "●", paused: "❚❚", done: "✓", cancelled: "✕" };
+export const ITEM_STATUS_ICON: Record<ItemStatus, LucideIcon> = { pending: Circle, in_progress: CirclePlay, paused: CirclePause, done: CircleCheck, cancelled: CircleX };
 export const PAYMENT_LABELS: Record<PaymentStatus, string> = { unpaid: "Не оплачен", partial: "Частично", paid: "Оплачен", refunded: "Возврат" };
 
 export interface UserRef { id: string; full_name: string }

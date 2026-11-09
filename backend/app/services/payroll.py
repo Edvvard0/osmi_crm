@@ -102,21 +102,24 @@ def _scheme_read(
     return PayrollSchemeRead(
         id=scheme.id,
         user=users[scheme.user_id],
-        scheme_type=scheme.scheme_type,  # type: ignore[arg-type]
+        scheme_type=scheme.scheme_type,
         percent=None if scheme.percent is None else money_s(scheme.percent),
         norm_hour_rate=None if scheme.norm_hour_rate is None else money_s(scheme.norm_hour_rate),
         fixed_monthly=None if scheme.fixed_monthly is None else money_s(scheme.fixed_monthly),
-        department=scheme.department,  # type: ignore[arg-type]
+        department=scheme.department,
         valid_from=scheme.valid_from,
         valid_to=scheme.valid_to,
-        is_current=scheme.valid_from <= today and (scheme.valid_to is None or scheme.valid_to >= today),
+        is_current=scheme.valid_from <= today
+        and (scheme.valid_to is None or scheme.valid_to >= today),
         description=describe_scheme(scheme),
         created_by=users[scheme.created_by],
         created_at=scheme.created_at,
     )
 
 
-async def schemes_read(session: AsyncSession, schemes: list[PayrollScheme]) -> list[PayrollSchemeRead]:
+async def schemes_read(
+    session: AsyncSession, schemes: list[PayrollScheme]
+) -> list[PayrollSchemeRead]:
     users = await _user_refs(
         session, {s.user_id for s in schemes} | {s.created_by for s in schemes}
     )
@@ -124,7 +127,9 @@ async def schemes_read(session: AsyncSession, schemes: list[PayrollScheme]) -> l
     return [_scheme_read(s, users, today) for s in schemes]
 
 
-def _adjustment_read(adj: PayrollAdjustment, users: dict[uuid.UUID, UserRef]) -> PayrollAdjustmentRead:
+def _adjustment_read(
+    adj: PayrollAdjustment, users: dict[uuid.UUID, UserRef]
+) -> PayrollAdjustmentRead:
     return PayrollAdjustmentRead(
         id=adj.id,
         user=users[adj.user_id],
@@ -160,7 +165,7 @@ async def get_detail(
                 order=PayrollOrderRef(id=i.order_id, number=i.order_number),
                 closed_at=i.closed_at,
                 name=i.name,
-                department=i.department,  # type: ignore[arg-type]
+                department=i.department,
                 quantity=money_s(i.quantity),
                 norm_hours_total=money_s(i.norm_hours_total),
                 item_net=money_s(i.item_net),
@@ -258,7 +263,9 @@ async def create_scheme(
     )
     has_any = (
         await session.scalar(
-            select(func.count()).select_from(PayrollScheme).where(PayrollScheme.user_id == data.user_id)
+            select(func.count())
+            .select_from(PayrollScheme)
+            .where(PayrollScheme.user_id == data.user_id)
         )
         or 0
     ) > 0
@@ -411,7 +418,9 @@ async def list_adjustments(
     if user_id is not None:
         stmt = stmt.where(PayrollAdjustment.user_id == user_id)
     if month_value is not None:
-        stmt = stmt.where(PayrollAdjustment.period_month == parse_month(month_value, allow_future=True))
+        stmt = stmt.where(
+            PayrollAdjustment.period_month == parse_month(month_value, allow_future=True)
+        )
     return await adjustments_read(session, list((await session.scalars(stmt)).all()))
 
 
@@ -459,4 +468,3 @@ async def create_adjustment(
     )
     await session.commit()
     return (await adjustments_read(session, [adj]))[0]
-

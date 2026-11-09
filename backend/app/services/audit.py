@@ -35,7 +35,7 @@ def clean(value: str, limit: int = 64) -> str:
 
 
 _SECRET_SUBSTR = ("password", "token", "secret", "hash")
-_SECRET_WORD = "code"
+_SECRET_WORD = "code"  # noqa: S105 — имя ключа для маскирования, а не пароль
 REDACTED = "***"
 
 

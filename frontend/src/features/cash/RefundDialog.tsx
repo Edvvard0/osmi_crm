@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 
-import { type AppError, toAppError } from "@/shared/api/errors";
+import { type AppError, fieldText, toAppError } from "@/shared/api/errors";
 import { formatMoney, parseDecimal, toInput } from "@/shared/lib/money";
 import { Modal } from "@/shared/ui/modal";
 import { Alert, Button, Input, Textarea } from "@/shared/ui/ui";
@@ -102,7 +102,7 @@ export function RefundDialog({ target, onClose, onDone }: { target: RefundTarget
             touch();
           }}
         />
-        {err && <Alert>{err.code === "validation_error" && err.fields.comment ? "Укажите причину возврата (от 3 до 500 символов)" : cashErrorText(err)}</Alert>}
+        {err && <Alert>{(err.code === "validation_error" && fieldText(err, "comment", "Укажите причину возврата (от 3 до 500 символов)")) || cashErrorText(err)}</Alert>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>Отмена</Button>
           <Button type="submit" variant="danger" loading={refund.isPending}>Оформить возврат</Button>
