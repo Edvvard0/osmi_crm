@@ -15,7 +15,9 @@ import structlog
 
 from app import tasks as tasks_pkg
 from app.core import periodic
+from app.core.config import get_settings
 from app.core.db import dispose_engine
+from app.core.logging import setup_logging
 from app.services import telegram_client
 
 log = structlog.get_logger()
@@ -52,24 +54,25 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     args = parser.parse_args(argv)
     if args.healthcheck:
         return asyncio.run(_healthcheck())
+    settings = get_settings()
+    setup_logging(settings.is_prod, settings.log_level)
     asyncio.run(run())
     return 0
 
 
 async def _healthcheck() -> int:  # pragma: no cover
-    """Минимальная проверка: БД отвечает. Проверку heartbeat добавляет модуль 12."""
-    from sqlalchemy import text
-
-    from app.core.db import get_engine
+    """0 — heartbeat воркера свежий (не старше READY_WORKER_MAX_AGE_SECONDS)."""
+    from app.core.periodic import session_scope
+    from app.services import system_status
 
     try:
-        async with get_engine().connect() as conn:
-            await conn.execute(text("SELECT 1"))
+        async with session_scope() as session:
+            fresh = await system_status.heartbeat_is_fresh(session)
     except Exception:
         return 1
     finally:
         await dispose_engine()
-    return 0
+    return 0 if fresh else 1
 
 
 if __name__ == "__main__":  # pragma: no cover

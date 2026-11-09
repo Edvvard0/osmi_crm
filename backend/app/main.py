@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 import app.api.v1 as api_v1
 from app.core.config import get_settings
@@ -11,6 +12,7 @@ from app.core.db import dispose_engine
 from app.core.errors import register_error_handlers
 from app.core.logging import setup_logging
 from app.core.middleware import RequestContextMiddleware
+from app.core.security_headers import SecurityHeadersMiddleware
 
 
 @asynccontextmanager
@@ -33,7 +35,7 @@ def _include_routers(app: FastAPI) -> None:
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    setup_logging(settings.is_prod)
+    setup_logging(settings.is_prod, settings.log_level)
     docs = None if settings.is_prod else "/api/docs"
     app = FastAPI(
         title="CRM",
@@ -43,6 +45,18 @@ def create_app() -> FastAPI:
         openapi_url=None if settings.is_prod else "/openapi.json",
     )
     app.add_middleware(RequestContextMiddleware)
+    origins = settings.cors_origin_list  # в prod пусто: CORS-заголовков API не отдаёт
+    if origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+            expose_headers=["X-Request-ID", "Content-Disposition"],
+            max_age=600,
+        )
+    app.add_middleware(SecurityHeadersMiddleware)
     register_error_handlers(app)
     _include_routers(app)
     return app

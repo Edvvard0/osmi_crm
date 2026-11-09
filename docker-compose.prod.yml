@@ -1,35 +1,215 @@
-# Прод: секреты только из окружения/secret-store, наружу — только edge
+# Прод-окружение (docs/api-contract-m12.md, «Развёртывание»; пошаговая инструкция — docs/deployment.md).
+# Запуск:  make prod-up   (= docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build)
+# Секреты и настройки — только в .env.prod (вне репозитория, права 600); шаблон — .env.prod.example.
+# Наружу публикуется только edge (80/443); PostgreSQL порта на хосте не имеет.
+name: crm
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "5" }
+
+# Переменные backend. Пароли других ролей БД и секреты Telegram-бота сюда намеренно не попадают
+# сверх необходимого: api/worker знают только пароль роли crm_app.
+x-backend-env: &backend-env
+  ENV: prod
+  SECRET_KEY: ${SECRET_KEY:?задайте SECRET_KEY в .env.prod}
+  DATABASE_URL: postgresql+asyncpg://crm_app:${DB_APP_PASSWORD:?задайте DB_APP_PASSWORD}@db:5432/${POSTGRES_DB:-crm}
+  APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Moscow}
+  PUBLIC_BASE_URL: https://${DOMAIN:?задайте DOMAIN}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+  TELEGRAM_MODE: ${TELEGRAM_MODE:-off}
+  TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+  WORKER_HEARTBEAT_SECONDS: ${WORKER_HEARTBEAT_SECONDS:-30}
+  READY_WORKER_MAX_AGE_SECONDS: ${READY_WORKER_MAX_AGE_SECONDS:-120}
+  READY_OUTBOX_MAX_AGE_SECONDS: ${READY_OUTBOX_MAX_AGE_SECONDS:-300}
+  BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+  APP_VERSION: ${APP_VERSION:-dev}
+  # Клиентский IP берётся из X-Forwarded-For, который edge перезаписывает; API доступен
+  # только из внутренней сети compose (порт не опубликован), поэтому доверяем прокси.
+  FORWARDED_ALLOW_IPS: "*"
+
+x-hardened: &hardened
+  restart: unless-stopped
+  logging: *logging
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
+x-backend-build: &backend-build
+  context: ./backend
+  target: prod
+  args:
+    APP_VERSION: ${APP_VERSION:-dev}
+
 services:
   db:
-    image: postgres:16-alpine
-    environment: { POSTGRES_USER: crm, POSTGRES_PASSWORD_FILE: /run/secrets/db_password, POSTGRES_DB: crm }
-    secrets: [db_password]
-    volumes: [pgdata:/var/lib/postgresql/data]
-    restart: unless-stopped
-  api:
-    build: { context: ./backend, target: prod }
+    <<: *hardened
+    image: postgres:16.6-alpine
     environment:
-      ENV: prod
-      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
-      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
-    depends_on: [db]
-    restart: unless-stopped
+      POSTGRES_USER: ${POSTGRES_USER:-crm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-crm}
+      # Пароли ролей crm_migrator (DDL) и crm_app (DML) — для deploy/db/init-roles.sh (первый запуск).
+      DB_MIGRATOR_PASSWORD: ${DB_MIGRATOR_PASSWORD:?задайте DB_MIGRATOR_PASSWORD}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?задайте DB_APP_PASSWORD}
+      TZ: ${APP_TIMEZONE:-Europe/Moscow}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/db/init-roles.sh:/docker-entrypoint-initdb.d/10-init-roles.sh:ro
+    # postgres-образу нужны CHOWN/SETUID/SETGID/DAC_OVERRIDE/FOWNER при старте от root
+    cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, FOWNER]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    # ports: не публикуются
+
+  migrate:
+    <<: *hardened
+    restart: "no"
+    image: crm-backend:${APP_VERSION:-dev}
+    command: ["alembic", "upgrade", "head"]
+    healthcheck: { disable: true }
+    environment:
+      <<: *backend-env
+      # Миграции выполняет владелец схемы, а не роль приложения.
+      DATABASE_URL: postgresql+asyncpg://crm_migrator:${DB_MIGRATOR_PASSWORD}@db:5432/${POSTGRES_DB:-crm}
     read_only: true
     tmpfs: [/tmp]
+    depends_on:
+      db: { condition: service_healthy }
+
+  api:
+    <<: *hardened
+    build: *backend-build
+    image: crm-backend:${APP_VERSION:-dev}
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8000
+      - --workers=2
+      - --no-server-header
+      - --proxy-headers
+    environment: *backend-env
+    read_only: true
+    tmpfs: [/tmp]
+    volumes:
+      # Метка последнего успешного бэкапа для GET /system/status (только чтение).
+      - backups:/backup:ro
+    healthcheck:
+      # Готовность: 200 (ok/degraded) — здоров, 503 (БД/миграции) — нет.
+      test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://127.0.0.1:8000/api/v1/health/ready',timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      db: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+      backup: { condition: service_started }
+
+  worker:
+    <<: *hardened
+    image: crm-backend:${APP_VERSION:-dev}
+    command: ["python", "-m", "app.worker"]
+    environment: *backend-env
+    read_only: true
+    tmpfs: [/tmp]
+    # Один экземпляр: advisory lock страхует от дубля периодических задач.
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.worker", "--healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      db: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+
+  web:
+    <<: *hardened
+    build:
+      context: ./frontend
+      target: prod
+    image: crm-frontend:${APP_VERSION:-dev}
+    read_only: true
+    tmpfs: [/tmp]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+
+  edge:
+    <<: *hardened
+    image: nginx:1.27.3-alpine
+    # Периодический reload подхватывает перевыпущенный сертификат (certbot обновляет файлы в томе).
+    command:
+      - /bin/sh
+      - -c
+      - "(while :; do sleep 6h; nginx -s reload; done) & exec /docker-entrypoint.sh nginx -g 'daemon off;'"
+    environment:
+      DOMAIN: ${DOMAIN:?задайте DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/nginx.prod.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./deploy/nginx/snippets:/etc/nginx/snippets:ro
+      - ./frontend/public/offline.html:/usr/share/nginx/offline/offline.html:ro
+      - letsencrypt:/etc/letsencrypt:ro
+      - acme:/var/www/certbot:ro
+    # nginx стартует от root (привязка к 80/443, затем сброс до пользователя nginx)
+    cap_add: [CHOWN, SETUID, SETGID, NET_BIND_SERVICE, DAC_OVERRIDE]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      api: { condition: service_healthy }
+      web: { condition: service_healthy }
+
+  certbot:
+    restart: unless-stopped
+    logging: *logging
+    image: certbot/certbot:v3.0.1
+    # Продление раз в 12 часов (certbot обновляет только сертификаты, до окончания которых < 30 дней).
+    entrypoint:
+      - /bin/sh
+      - -c
+      - "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - acme:/var/www/certbot
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
-  web:
-    build: { context: ./frontend, target: prod }
-    restart: unless-stopped
+
+  backup:
+    <<: *hardened
+    build:
+      context: ./deploy/backup
+    image: crm-backup:local
+    environment:
+      PGHOST: db
+      PGUSER: crm_migrator
+      PGPASSWORD: ${DB_MIGRATOR_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-crm}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Moscow}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+    volumes:
+      - backups:/backup
     read_only: true
-    cap_drop: [ALL]
-  edge:
-    image: nginx:1.27-alpine
-    ports: ["80:80"]
-    volumes: [./deploy/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro]
-    depends_on: [api, web]
-    restart: unless-stopped
-secrets:
-  db_password: { environment: DB_PASSWORD }
+    tmpfs: [/tmp]
+    depends_on:
+      db: { condition: service_healthy }
+
 volumes:
   pgdata:
+  backups:
+  letsencrypt:
+  acme:

@@ -92,7 +92,11 @@ async def _run_set_webhook() -> int:  # pragma: no cover
     if client is None or settings.telegram_mode != "webhook":
         print("Telegram выключен или TELEGRAM_MODE != webhook: ничего не сделано")
         return 0
-    if not settings.public_base_url or settings.telegram_webhook_secret is None:
+    if (
+        "public_base_url" not in settings.model_fields_set
+        or not settings.public_base_url
+        or settings.telegram_webhook_secret is None
+    ):
         print("Задайте PUBLIC_BASE_URL и TELEGRAM_WEBHOOK_SECRET", file=sys.stderr)
         return 1
     url = settings.public_base_url.rstrip("/") + "/api/v1/telegram/webhook"

@@ -10,6 +10,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.core.config import get_settings
+from app.core.security_headers import security_header_items
+
 log = structlog.get_logger()
 
 HTTP_CODES = {
@@ -23,6 +26,9 @@ HTTP_CODES = {
     415: "unsupported_media_type",
     422: "validation_error",
     429: "rate_limited",
+    502: "service_unavailable",
+    503: "service_unavailable",
+    504: "service_unavailable",
 }
 MESSAGES = {
     "bad_request": "Некорректный запрос",
@@ -35,7 +41,8 @@ MESSAGES = {
     "unsupported_media_type": "Неподдерживаемый формат",
     "validation_error": "Проверьте введённые данные",
     "rate_limited": "Слишком много запросов, повторите позже",
-    "internal_error": "Внутренняя ошибка. Попробуйте позже",
+    "internal_error": "Внутренняя ошибка сервера",
+    "service_unavailable": "Сервис временно недоступен",
     "unique_violation": "Такая запись уже существует",
     "reference_violation": "Связанная запись не найдена или используется",
     "constraint_violation": "Данные нарушают ограничения",
@@ -70,6 +77,7 @@ MESSAGES = {
     "order_not_paid": "Заказ не оплачен полностью",
     "has_payments": "По заказу есть оплаты — сначала оформите возврат",
     "total_below_paid": "Итог заказа не может быть меньше уже оплаченной суммы",
+    "scheme_overlap": "Для этого сотрудника на выбранные даты уже действует схема",
 }
 
 
@@ -104,6 +112,9 @@ def error_response(
         error["details"] = details
     body = {"error": error}
     resp = JSONResponse(body, status_code=status)
+    # Ответы ServerErrorMiddleware (500) идут мимо SecurityHeadersMiddleware.
+    for name, value in security_header_items(request.url.path, get_settings().is_prod):
+        resp.headers.setdefault(name, value)
     if rid:
         resp.headers["X-Request-ID"] = rid
     return resp
