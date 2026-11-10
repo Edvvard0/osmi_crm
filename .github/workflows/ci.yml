@@ -43,5 +43,11 @@ jobs:
       - run: pipx run semgrep --config auto --error .
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with: { scan-type: fs, severity: "HIGH,CRITICAL", exit-code: "1" }
+      # Compose проверяет обязательные переменные (${VAR:?}) даже при build — задаём фиктивные значения.
       - run: docker compose -f docker-compose.prod.yml build
-        env: { SECRET_KEY: ci-secret-key-000000000000000000000000, DATABASE_URL: "postgresql+asyncpg://x:x@db/x" }
+        env:
+          SECRET_KEY: ci-secret-key-000000000000000000000000
+          POSTGRES_PASSWORD: ci
+          DB_MIGRATOR_PASSWORD: ci
+          DB_APP_PASSWORD: ci
+          DOMAIN: ci.invalid

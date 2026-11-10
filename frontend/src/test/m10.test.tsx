@@ -466,7 +466,10 @@ describe("D-01 дашборд директора", () => {
     let fail = true;
     world("director", { "GET /reports/dashboard": () => (fail ? apiError(404, "not_found") : json(200, DASH)) });
     open(<DirectorDashboard />);
-    const alert = await screen.findByRole("alert");
+    // Кроме баннера может появиться toast с role="alert", поэтому берём именно блок с кнопкой «Повторить».
+    const retry = await screen.findByRole("button", { name: "Повторить" });
+    const alert = retry.closest<HTMLElement>('[role="alert"]');
+    if (!alert) throw new Error("баннер ошибки не найден");
     expect(alert).toHaveTextContent("Не удалось загрузить");
     expect(alert).not.toHaveTextContent("SQLSTATE");
     expect(alert).not.toHaveTextContent("SERVER TEXT");
