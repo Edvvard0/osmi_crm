@@ -13,10 +13,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    for ext in ("pg_trgm", "btree_gist", "citext"):
-        op.execute(f"CREATE EXTENSION IF NOT EXISTS {ext}")
+    op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+    op.execute("CREATE EXTENSION IF NOT EXISTS btree_gist")
+    op.execute("CREATE EXTENSION IF NOT EXISTS citext")
 
 
 def downgrade() -> None:
-    for ext in ("citext", "btree_gist", "pg_trgm"):
-        op.execute(f"DROP EXTENSION IF EXISTS {ext}")
+    op.execute("DROP EXTENSION IF EXISTS citext")
+    op.execute("DROP EXTENSION IF EXISTS btree_gist")
+    op.execute("DROP EXTENSION IF EXISTS pg_trgm")

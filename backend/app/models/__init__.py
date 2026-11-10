@@ -27,4 +27,5 @@ __all__ = [
 
 # Авто-регистрация моделей: новый файл в app/models подхватывается без правки этого модуля.
 for _info in pkgutil.iter_modules(__path__):
-    importlib.import_module(f"{__name__}.{_info.name}")
+    # Имя модуля берётся из списка файлов пакета (pkgutil), не из ввода пользователя.
+    importlib.import_module(f"{__name__}.{_info.name}")  # nosemgrep

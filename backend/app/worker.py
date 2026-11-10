@@ -26,7 +26,8 @@ log = structlog.get_logger()
 def load_tasks() -> list[str]:
     """Импортирует все модули `app.tasks.*`; возвращает имена зарегистрированных задач."""
     for mod in pkgutil.iter_modules(tasks_pkg.__path__):
-        importlib.import_module(f"{tasks_pkg.__name__}.{mod.name}")
+        # Имя модуля берётся из списка файлов пакета (pkgutil), не из ввода пользователя.
+        importlib.import_module(f"{tasks_pkg.__name__}.{mod.name}")  # nosemgrep
     return sorted(periodic.REGISTRY)
 
 

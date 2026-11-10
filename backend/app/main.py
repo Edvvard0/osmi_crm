@@ -27,7 +27,8 @@ def _include_routers(app: FastAPI) -> None:
     Новый модуль достаточно положить файлом в app/api/v1 — main.py не меняется.
     """
     for info in sorted(pkgutil.iter_modules(api_v1.__path__), key=lambda i: i.name):
-        module = importlib.import_module(f"{api_v1.__name__}.{info.name}")
+        # Имя модуля берётся из списка файлов пакета (pkgutil), не из ввода пользователя.
+        module = importlib.import_module(f"{api_v1.__name__}.{info.name}")  # nosemgrep
         router = getattr(module, "router", None)
         if router is not None:
             app.include_router(router, prefix="/api/v1")

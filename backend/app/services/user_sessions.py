@@ -244,10 +244,10 @@ async def session_cleanup(session: AsyncSession, now: datetime | None = None) ->
     days = int(await get_setting(session, "session_retention_days"))
     border = (now or utcnow()) - timedelta(days=days)
     result = await session.execute(
-        delete(RefreshSession)
-        .where(or_(RefreshSession.expires_at < border, RefreshSession.revoked_at < border))
-        .returning(RefreshSession.id)
+        delete(RefreshSession).where(
+            or_(RefreshSession.expires_at < border, RefreshSession.revoked_at < border)
+        )
     )
-    deleted = len(result.all())
+    deleted = int(getattr(result, "rowcount", 0) or 0)
     await session.commit()
     return deleted

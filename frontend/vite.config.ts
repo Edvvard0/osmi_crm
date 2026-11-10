@@ -1,4 +1,4 @@
-/// <reference types="vitest" />
+/// <reference types="vitest/config" />
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 import { defineConfig } from "vite";
@@ -79,8 +79,11 @@ export default defineConfig({
     }),
   ],
   resolve: { alias: { "@": path.resolve(__dirname, "src") } },
-  build: { sourcemap: false },
-  esbuild: process.env.NODE_ENV === "production" ? { drop: ["console", "debugger"] } : {},
+  build: {
+    sourcemap: false,
+    // В продакшен-сборке console.* и debugger вырезаются минификатором.
+    rolldownOptions: { output: { minify: { compress: { dropConsole: true, dropDebugger: true } } } },
+  },
   server: { host: true, port: 5173, proxy: { "/api": process.env.API_PROXY ?? "http://localhost:8000" } },
   test: {
     environment: "jsdom",

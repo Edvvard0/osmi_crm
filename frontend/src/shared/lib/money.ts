@@ -28,8 +28,8 @@ export function formatHours(v: string | null | undefined): string {
  */
 export function parseDecimal(raw: string, scale = 2): string | null {
   const s = raw.replace(/\s/g, "").replace(",", ".");
-  const m = new RegExp(String.raw`^(\d{1,9})(?:\.(\d{0,${scale}}))?$`).exec(s);
-  if (!m) return null;
+  const m = /^(\d{1,9})(?:\.(\d*))?$/.exec(s);
+  if (!m || (m[2] ?? "").length > scale) return null;
   return `${m[1].replace(/^0+(?=\d)/, "")}.${(m[2] ?? "").padEnd(scale, "0")}`;
 }
 

@@ -1,15 +1,18 @@
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
+# Сборка и dev-сервер работают от непривилегированного пользователя node.
+RUN chown node:node /app
+USER node
+COPY --chown=node:node package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
 FROM deps AS dev
-COPY . .
+COPY --chown=node:node . .
 ENV API_PROXY=http://api:8000
 CMD ["npm", "run", "dev", "--", "--host"]
 
 FROM deps AS build
-COPY . .
+COPY --chown=node:node . .
 RUN npm run build && npm run check:bundle
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS prod

@@ -14,8 +14,8 @@ jobs:
       DATABASE_URL: postgresql+asyncpg://crm:crm@localhost:5432/crm_test
     defaults: { run: { working-directory: backend } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with: { python-version: "3.12" }
       - run: pip install -e ".[dev]"
       - run: ruff check .
@@ -27,9 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: frontend } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version: 22 }
       - run: npm ci
       - run: npm run lint
       - run: npm run build
@@ -39,9 +39,9 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: pipx run semgrep --config auto --error .
-      - uses: aquasecurity/trivy-action@0.24.0
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with: { scan-type: fs, severity: "HIGH,CRITICAL", exit-code: "1" }
       - run: docker compose -f docker-compose.prod.yml build
         env: { SECRET_KEY: ci-secret-key-000000000000000000000000, DATABASE_URL: "postgresql+asyncpg://x:x@db/x" }
